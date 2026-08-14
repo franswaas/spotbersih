@@ -26,7 +26,8 @@ import { Report } from "../types/report";
 import { radius, shadow, spacing } from "../theme";
 import type { RootStackParamList } from "../navigation/types";
 
-const AI_SERVER_URL = process.env.EXPO_PUBLIC_AI_SERVER_URL || "http://127.0.0.1:8000";
+const AI_SERVER_URL = process.env.EXPO_PUBLIC_AI_SERVER_URL || "https://spotbersih-api.loca.lt";
+axios.defaults.headers.common["bypass-tunnel-reminder"] = "1";
 
 interface DetectedBox {
   id: string;
