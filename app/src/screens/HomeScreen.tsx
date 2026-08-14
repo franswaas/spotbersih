@@ -177,72 +177,51 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     setFetchingGps(true);
 
     if (typeof navigator !== "undefined" && navigator.geolocation) {
-      // 1. Quick Device/Wi-Fi Positioning (instant on both Laptop and Mobile)
+      // Direct Real Device GPS Query
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const lat = Number(pos.coords.latitude.toFixed(6));
           const lng = Number(pos.coords.longitude.toFixed(6));
-          void onLocationResolved(lat, lng, Math.round(pos.coords.accuracy), "GPS / Lokasi Perangkat", fromUser);
-
-          // 2. Silently upgrade to satellite precision if available
+          void onLocationResolved(lat, lng, Math.round(pos.coords.accuracy), "GPS Perangkat Asli", fromUser);
+        },
+        () => {
+          // Standard Device Positioning Fallback
           navigator.geolocation.getCurrentPosition(
-            (finePos) => {
-              const fineLat = Number(finePos.coords.latitude.toFixed(6));
-              const fineLng = Number(finePos.coords.longitude.toFixed(6));
-              void onLocationResolved(fineLat, fineLng, Math.round(finePos.coords.accuracy), "Satelit GPS Presisi", false);
+            (pos) => {
+              const lat = Number(pos.coords.latitude.toFixed(6));
+              const lng = Number(pos.coords.longitude.toFixed(6));
+              void onLocationResolved(lat, lng, Math.round(pos.coords.accuracy), "Lokasi Perangkat", fromUser);
             },
-            () => {},
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 },
+            (err) => {
+              console.warn("Device location error:", err.message);
+              if (isMountedRef.current) {
+                setFetchingGps(false);
+                if (fromUser) {
+                  setShowGpsModal(true);
+                  Alert.alert(
+                    "Izin Lokasi Belum Aktif",
+                    isMobile
+                      ? "Pastikan tombol Lokasi / GPS di HP Anda sudah menyala dan klik 'Izinkan' pada browser."
+                      : "Klik ikon gembok di sebelah kiri alamat web URL dan pilih Izinkan Lokasi."
+                  );
+                }
+              }
+            },
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
           );
         },
-        async (err) => {
-          console.warn("Standard geolocation notice:", err.message);
-          // 3. Fallback: Network IP Geolocation
-          try {
-            const res = await axios.get("https://ipapi.co/json/", { timeout: 4000 });
-            if (res.data?.latitude && res.data?.longitude) {
-              const lat = Number(res.data.latitude.toFixed(6));
-              const lng = Number(res.data.longitude.toFixed(6));
-              const city = res.data.city || res.data.region || "Lokasi Anda";
-              void onLocationResolved(lat, lng, 100, `Jaringan (${city})`, fromUser);
-              return;
-            }
-          } catch {}
-
-          if (isMountedRef.current) {
-            setFetchingGps(false);
-            if (fromUser) {
-              setShowGpsModal(true);
-              Alert.alert(
-                "Izin Lokasi Belum Aktif",
-                isMobile
-                  ? "Pastikan tombol Lokasi di HP Anda sudah menyala dan izin browser telah diizinkan."
-                  : "Klik ikon gembok di sebelah kiri alamat web URL dan pilih Izinkan Lokasi."
-              );
-            }
-          }
-        },
-        { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 },
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
       );
     } else {
-      void fetchIpLocation(fromUser);
+      setFetchingGps(false);
+      if (fromUser) {
+        Alert.alert("Perangkat Tidak Mendukung GPS", "Browser Anda tidak mendukung geolokasi GPS.");
+      }
     }
   };
 
-  const fetchIpLocation = async (showAlert = true) => {
-    try {
-      const res = await axios.get("https://ipapi.co/json/", { timeout: 5000 });
-      if (res.data?.latitude && res.data?.longitude && isMountedRef.current) {
-        const lat = Number(res.data.latitude.toFixed(6));
-        const lng = Number(res.data.longitude.toFixed(6));
-        const city = res.data.city || res.data.region || "Lokasi Anda";
-        void onLocationResolved(lat, lng, 100, `Jaringan ISP (${city})`, showAlert);
-      }
-    } catch {
-      if (showAlert) {
-        Alert.alert("Gagal Membaca Jaringan", "Pastikan koneksi internet aktif.");
-      }
-    }
+  const handleManualCoordinateSelect = (lat: number, lng: number) => {
+    void onLocationResolved(lat, lng, 5, "Dipilih Manual dari Peta", true);
   };
 
   useEffect(() => {
@@ -1002,6 +981,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             reports={reports}
             height={180}
             userLocation={gpsLocation}
+            onCoordinateSelect={handleManualCoordinateSelect}
             title="🗺️ Peta Sebaran Sampah Warga"
             subtitle="Pantau titik laporan secara real-time & bersihkan bersama."
           />
@@ -1302,6 +1282,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               reports={reports}
               height={320}
               userLocation={gpsLocation}
+              onCoordinateSelect={handleManualCoordinateSelect}
               title="🗺️ Peta Interaktif Sebaran Sampah Warga"
               subtitle="Pantau persebaran lokasi sampah yang telah dilaporkan warga di sekitar Anda."
             />

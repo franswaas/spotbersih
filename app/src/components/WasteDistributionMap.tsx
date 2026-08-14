@@ -12,6 +12,7 @@ interface WasteDistributionMapProps {
   subtitle?: string;
   height?: number;
   userLocation?: { lat: number; lng: number } | null;
+  onCoordinateSelect?: (lat: number, lng: number) => void;
 }
 
 export default function WasteDistributionMap({
@@ -21,11 +22,24 @@ export default function WasteDistributionMap({
   subtitle = "Pantau titik lokasi sampah yang dilaporkan secara real-time untuk memudahkan aksi gotong royong.",
   height = 220,
   userLocation,
+  onCoordinateSelect,
 }: WasteDistributionMapProps) {
   const [internalPos, setInternalPos] = useState<{ lat: number; lng: number } | null>(null);
   const [fetchingGps, setFetchingGps] = useState(false);
 
   const userPos = userLocation || internalPos;
+
+  useEffect(() => {
+    const handler = (ev: MessageEvent) => {
+      if (ev.data?.type === "SPOTBERSIH_MANUAL_PIN" && onCoordinateSelect) {
+        onCoordinateSelect(ev.data.lat, ev.data.lng);
+      }
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("message", handler);
+      return () => window.removeEventListener("message", handler);
+    }
+  }, [onCoordinateSelect]);
 
   // Single GPS fetch only if not provided from parent
   const fetchUserGps = () => {
@@ -289,6 +303,14 @@ export default function WasteDistributionMap({
           } else if (group.length === 1) {
             map.setView(group[0], 15);
           }
+
+          map.on('click', function(e) {
+            var lat = Number(e.latlng.lat.toFixed(6));
+            var lng = Number(e.latlng.lng.toFixed(6));
+            try {
+              window.parent.postMessage({ type: 'SPOTBERSIH_MANUAL_PIN', lat: lat, lng: lng }, '*');
+            } catch (err) {}
+          });
         </script>
       </body>
       </html>
