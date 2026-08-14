@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "SpotBersih",
+    "slug": "spotbersih",
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow the app to access your camera to report garbage."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow WasteWatch to use your location to place your garbage report accurately."
+        }
+      ]
+    ],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.aisoc.wastewatch",
+      "softwareKeyboardLayoutMode": "resize",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F8A4C"
+      },
+      "edgeToEdgeEnabled": false,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

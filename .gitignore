@@ -1,0 +1,153 @@
+# ==========================================
+# Python
+# ==========================================
+
+.venv/
+venv/
+env/
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ==========================================
+# Environment Variables
+# ==========================================
+
+.env
+.env.*
+!.env.example
+
+# ==========================================
+# Database
+# ==========================================
+
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================================
+# Model Artifacts
+# ==========================================
+
+*.pt
+*.pth
+*.onnx
+*.engine
+
+runs/*
+!runs/.gitkeep
+
+weights/*
+!weights/.gitkeep
+
+# ==========================================
+# Uploads
+# ==========================================
+
+uploads/original/*
+uploads/annotated/*
+
+!uploads/original/.gitkeep
+!uploads/annotated/.gitkeep
+
+# ==========================================
+# React Native / Expo
+# ==========================================
+
+app/node_modules/
+app/.expo/
+app/.expo-shared/
+
+app/web-build/
+app/dist/
+
+.claude/
+AGENTS.md
+CLAUDE.md
+
+# Metro
+app/.metro-health-check*
+app/src/config/generatedApi.ts
+
+# Native build folders
+app/android/
+app/ios/
+
+# Expo logs
+app/npm-debug.*
+app/yarn-debug.*
+app/yarn-error.*
+
+# ==========================================
+# Logs
+# ==========================================
+
+*.log
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ==========================================
+# IDE
+# ==========================================
+
+.vscode/
+.idea/
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# ==========================================
+# Coverage / Testing
+# ==========================================
+
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+
+# Python packaging artifacts
+*.egg-info/
+.eggs/
+
+# ==========================================
+# Build Artifacts
+# ==========================================
+
+build/
+dist/
+
+# ==========================================
+# Temporary Files
+# ==========================================
+
+*.tmp
+*.temp
+
+# Dataset source material
+dataset/
+dataset_offline_aug/
+dataset_offline_aug_G2/
+
+# Sample internet test images
+test_images_internet/
+
+#evaluation
+evaluation/
+
+#augmentation
+augmentation/
+
+#preprocessing
+preprocessing/
