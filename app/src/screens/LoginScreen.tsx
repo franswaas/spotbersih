@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 
 import AppButton from "../components/AppButton";
 import FadeInView from "../components/FadeInView";
+import { APP_LOGO } from "../constants/assets";
 import { useAuth, authErrorMessage } from "../context/AuthContext";
 import { colors, radius, shadow, spacing, typography } from "../theme";
 
@@ -112,12 +113,12 @@ export default function LoginScreen() {
         >
           <FadeInView style={styles.logoWrap}>
             <Image
-              source={require("../../assets/icon.png")}
+              source={{ uri: APP_LOGO }}
               style={styles.logoImage}
             />
-            <Text style={styles.title}>WasteWatch</Text>
+            <Text style={styles.title}>SpotBersih</Text>
             <Text style={styles.subtitle}>
-              Report waste, track cleanup in your city.
+              Pantau Sampah, Bersihkan Bersama
             </Text>
           </FadeInView>
 

@@ -25,6 +25,7 @@ import { getReports, deleteLocalReport, clearAllLocalReports, saveLocalReport } 
 import { Report } from "../types/report";
 import { radius, shadow, spacing } from "../theme";
 import type { RootStackParamList } from "../navigation/types";
+import { APP_LOGO, ICON_CAMERA, ICON_REPORT } from "../constants/assets";
 
 const getApiServerUrl = () => {
   if (typeof window !== "undefined") {
@@ -581,7 +582,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 }}
               >
                 <Image
-                  source={require("../../assets/icon_camera.png")}
+                  source={{ uri: ICON_CAMERA }}
                   style={{ width: 14, height: 14 }}
                   resizeMode="contain"
                 />
@@ -598,7 +599,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 }}
               >
                 <Image
-                  source={require("../../assets/icon_camera.png")}
+                  source={{ uri: ICON_CAMERA }}
                   style={{ width: 14, height: 14 }}
                   resizeMode="contain"
                 />
@@ -629,7 +630,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 {!cameraActive && (
                   <div style={{ textAlign: "center", color: "#9CA3AF" }}>
                     <Image
-                      source={require("../../assets/icon_camera.png")}
+                      source={{ uri: ICON_CAMERA }}
                       style={{ width: 44, height: 44, opacity: 0.7, alignSelf: "center" }}
                       resizeMode="contain"
                     />
@@ -754,7 +755,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 {!photoCamActive && !imageUri && (
                   <div style={{ textAlign: "center", color: "#9CA3AF" }}>
                     <Image
-                      source={require("../../assets/icon_camera.png")}
+                      source={{ uri: ICON_CAMERA }}
                       style={{ width: 44, height: 44, opacity: 0.7, alignSelf: "center" }}
                       resizeMode="contain"
                     />
@@ -801,7 +802,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                       <ActivityIndicator size="small" color="#FFF" />
                     ) : (
                       <Image
-                        source={require("../../assets/icon_report.png")}
+                        source={{ uri: ICON_REPORT }}
                         style={{ width: 15, height: 15 }}
                         resizeMode="contain"
                       />
@@ -819,7 +820,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   <>
                     <TouchableOpacity style={styles.toolBtnPrimary} onPress={snapPhotoFromCamera}>
                       <Image
-                        source={require("../../assets/icon_camera.png")}
+                        source={{ uri: ICON_CAMERA }}
                         style={{ width: 15, height: 15 }}
                         resizeMode="contain"
                       />
@@ -835,7 +836,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   <>
                     <TouchableOpacity style={styles.toolBtnSecondary} onPress={startPhotoCamera}>
                       <Image
-                        source={require("../../assets/icon_camera.png")}
+                        source={{ uri: ICON_CAMERA }}
                         style={{ width: 14, height: 14 }}
                         resizeMode="contain"
                       />
@@ -861,7 +862,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                           <ActivityIndicator size="small" color="#FFF" />
                         ) : (
                           <Image
-                            source={require("../../assets/icon_report.png")}
+                            source={{ uri: ICON_REPORT }}
                             style={{ width: 15, height: 15 }}
                             resizeMode="contain"
                           />
@@ -1020,7 +1021,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       <View style={styles.navbar}>
         <View style={styles.navBrand}>
           <Image
-            source={require("../../assets/app_logo.png")}
+            source={{ uri: APP_LOGO }}
             style={{ width: 32, height: 32, borderRadius: 8 }}
             resizeMode="contain"
           />
