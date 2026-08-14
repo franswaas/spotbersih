@@ -24,10 +24,7 @@ export default function WasteDistributionMap({
   userLocation,
   onCoordinateSelect,
 }: WasteDistributionMapProps) {
-  const [internalPos, setInternalPos] = useState<{ lat: number; lng: number } | null>(null);
-  const [fetchingGps, setFetchingGps] = useState(false);
-
-  const userPos = userLocation || internalPos;
+  const userPos = userLocation || null;
 
   useEffect(() => {
     const handler = (ev: MessageEvent) => {
@@ -40,33 +37,6 @@ export default function WasteDistributionMap({
       return () => window.removeEventListener("message", handler);
     }
   }, [onCoordinateSelect]);
-
-  // Single GPS fetch only if not provided from parent
-  const fetchUserGps = () => {
-    if (userLocation) return;
-    setFetchingGps(true);
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setInternalPos({
-            lat: Number(pos.coords.latitude.toFixed(6)),
-            lng: Number(pos.coords.longitude.toFixed(6)),
-          });
-          setFetchingGps(false);
-        },
-        () => {
-          setFetchingGps(false);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 },
-      );
-    } else {
-      setFetchingGps(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!userLocation) fetchUserGps();
-  }, [userLocation]);
 
   // Filter reports that have valid numeric coordinates
   const mappedReports = useMemo(
@@ -84,8 +54,10 @@ export default function WasteDistributionMap({
 
   // Generate Leaflet Interactive Map HTML
   const mapHtml = useMemo(() => {
-    const centerLat = userPos ? userPos.lat : mappedReports.length > 0 ? mappedReports[0].latitude : -7.7591;
-    const centerLng = userPos ? userPos.lng : mappedReports.length > 0 ? mappedReports[0].longitude : 110.3646;
+    // Clean center: User GPS -> First Report -> Indonesia General Overview
+    const centerLat = userPos ? userPos.lat : mappedReports.length > 0 ? mappedReports[0].latitude : -2.5489;
+    const centerLng = userPos ? userPos.lng : mappedReports.length > 0 ? mappedReports[0].longitude : 118.0149;
+    const initZoom = userPos ? 16 : mappedReports.length > 0 ? 14 : 5;
 
     const userPosJson = JSON.stringify(userPos);
     const markersJson = JSON.stringify(
@@ -230,7 +202,7 @@ export default function WasteDistributionMap({
           var reports = ${markersJson};
           var userPos = ${userPosJson};
           var defaultCenter = [${centerLat}, ${centerLng}];
-          var map = L.map('map', { zoomControl: true }).setView(defaultCenter, 14);
+          var map = L.map('map', { zoomControl: true }).setView(defaultCenter, ${initZoom});
 
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -338,16 +310,10 @@ export default function WasteDistributionMap({
               <Text style={styles.userPosBadgeText}>GPS Anda Aktif</Text>
             </View>
           ) : (
-            <TouchableOpacity
-              style={styles.activateGpsBadge}
-              onPress={fetchUserGps}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="navigate" size={11} color="#2563EB" />
-              <Text style={styles.activateGpsBadgeText}>
-                {fetchingGps ? "Mencari GPS..." : "Tampilkan Posisi Saya"}
-              </Text>
-            </TouchableOpacity>
+            <View style={[styles.activateGpsBadge, { borderColor: "#E5E7EB", backgroundColor: "#F3F4F6" }]}>
+              <Ionicons name="location-outline" size={11} color="#6B7280" />
+              <Text style={[styles.activateGpsBadgeText, { color: "#6B7280" }]}>GPS Belum Aktif</Text>
+            </View>
           )}
         </View>
       </View>
