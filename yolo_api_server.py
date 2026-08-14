@@ -414,9 +414,10 @@ def detect_waste(payload: dict = Body(...)):
 
         raw_candidates = []
 
-        # Run Ensemble Detection Engine (Ultra-Fast 416px, High Sensitivity)
+        # Run Ensemble Detection Engine (High Sensitivity Multi-Model)
+        min_conf = float(payload.get("confidence", 0.12))
         for model_name, model_instance in available_models:
-            results = model_instance(img_bgr, conf=0.18, imgsz=416, verbose=False)
+            results = model_instance(img_bgr, conf=min_conf, verbose=False)
             res = results[0]
 
             for box in res.boxes:
@@ -427,23 +428,9 @@ def detect_waste(payload: dict = Body(...)):
 
                 bw = x2 - x1
                 bh = y2 - y1
-                box_area = bw * bh
 
-                # Discard giant background boxes (> 65% of frame)
-                if box_area > 0.65 * total_frame_area or bw > 0.80 * w or bh > 0.80 * h:
-                    continue
-
-                # Discard tiny noise
-                if bw < 25 or bh < 25:
-                    continue
-
-                # Discard extreme aspect ratios
-                aspect = bw / bh if bh > 0 else 1.0
-                if aspect > 4.0 or aspect < 0.20:
-                    continue
-
-                # Discard face/head
-                if is_strictly_face((x1, y1, x2, y2), faces):
+                # Discard only impossible microscopic noise (< 6px)
+                if bw < 6 or bh < 6:
                     continue
 
                 raw_candidates.append({

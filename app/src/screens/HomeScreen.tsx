@@ -446,46 +446,25 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     setPhotoBoxes([]);
     try {
       let base64Data = "";
-      if (Platform.OS === "web") {
-        const img = new (window as any).Image();
-        img.crossOrigin = "anonymous";
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = uri;
+      if (uri.startsWith("data:image/")) {
+        base64Data = uri;
+      } else if (Platform.OS === "web" && uri.startsWith("blob:")) {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        base64Data = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
         });
-
-        const maxDim = 960;
-        let w = img.naturalWidth || 800;
-        let h = img.naturalHeight || 600;
-        if (w > maxDim || h > maxDim) {
-          if (w > h) {
-            h = Math.round((h * maxDim) / w);
-            w = maxDim;
-          } else {
-            w = Math.round((w * maxDim) / h);
-            h = maxDim;
-          }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, w, h);
-          base64Data = canvas.toDataURL("image/jpeg", 0.75);
-        } else {
-          base64Data = uri;
-        }
       } else {
         base64Data = uri;
       }
-      const res = await axios.post(`${AI_SERVER_URL}/detect`, { image: base64Data, confidence: 0.18 }, { timeout: 8000 });
+      const res = await axios.post(`${AI_SERVER_URL}/detect`, { image: base64Data, confidence: 0.12 }, { timeout: 10000 });
       if (isMountedRef.current && res.data?.detections) {
         setPhotoBoxes(res.data.detections);
       }
     } catch (e) {
-      console.warn(e);
+      console.warn("runPhotoAi error:", e);
     } finally {
       if (isMountedRef.current) setAnalyzingPhoto(false);
     }
