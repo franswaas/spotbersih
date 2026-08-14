@@ -1,5 +1,7 @@
 import os
 import base64
+import time
+import re
 
 app_dir = os.path.dirname(__file__)
 dist_dir = os.path.join(app_dir, "dist")
@@ -13,6 +15,14 @@ if os.path.exists(ionicons_path) and os.path.exists(index_html):
     
     with open(index_html, "r", encoding="utf-8") as f:
         content = f.read()
+
+    ts = int(time.time())
+
+    cache_meta = """
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    """
 
     # Clean previous font styles
     font_style = f"""
@@ -32,16 +42,19 @@ if os.path.exists(ionicons_path) and os.path.exists(index_html):
     </style>
     """
 
-    content = content.replace('src="/_expo/', 'src="./_expo/')
-    content = content.replace('href="/_expo/', 'href="./_expo/')
-    content = content.replace('href="/favicon.ico"', 'href="./favicon.ico"')
+    content = content.replace('src="/_expo/', f'src="./_expo/')
+    content = content.replace('href="/_expo/', f'href="./_expo/')
+    content = content.replace('href="/favicon.ico"', f'href="./favicon.ico?v={ts}"')
+
+    # Add cache buster query string to all scripts and stylesheets
+    content = re.sub(r'src="(\./_expo/[^"]+\.js)"', rf'src="\1?v={ts}"', content)
 
     if "</head>" in content:
-        content = content.replace("</head>", font_style + "\n</head>")
+        content = content.replace("</head>", cache_meta + "\n" + font_style + "\n</head>")
 
     with open(index_html, "w", encoding="utf-8") as f:
         f.write(content)
 
-    print("Successfully embedded Ionicons font directly into dist/index.html as Base64!")
+    print(f"Successfully embedded Ionicons font and cache busters (v={ts}) into dist/index.html!")
 else:
     print("Ionicons.ttf or index.html not found:", ionicons_path, index_html)
