@@ -226,7 +226,46 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   useEffect(() => {
     isMountedRef.current = true;
     void loadReportsData();
-    activateGps(false);
+
+    // 1. Silent Background GPS Detection & Auto-Lock
+    let watchId: number | null = null;
+    if (typeof navigator !== "undefined" && navigator.geolocation) {
+      setFetchingGps(true);
+      watchId = navigator.geolocation.watchPosition(
+        async (pos) => {
+          if (!isMountedRef.current) return;
+          const lat = Number(pos.coords.latitude.toFixed(6));
+          const lng = Number(pos.coords.longitude.toFixed(6));
+          const accuracy = Math.round(pos.coords.accuracy);
+          setGpsLocation({ lat, lng, accuracy, source: "Satelit / Hardware GPS" });
+          setFetchingGps(false);
+          setShowGpsModal(false);
+
+          // Reverse geocode to exact street
+          try {
+            const geoRes = await axios.get(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+              { timeout: 4000 }
+            );
+            if (isMountedRef.current && geoRes.data?.display_name) {
+              const addr = geoRes.data.address;
+              const road = addr?.road || addr?.suburb || addr?.village || addr?.neighbourhood || "";
+              const city = addr?.city || addr?.town || addr?.county || "";
+              const niceAddr = [road, city].filter(Boolean).join(", ");
+              if (niceAddr) setCustomAddress(niceAddr);
+              else setCustomAddress(geoRes.data.display_name.split(",").slice(0, 3).join(","));
+            }
+          } catch {
+            if (!customAddress) setCustomAddress(`Lokasi GPS (${lat}, ${lng})`);
+          }
+        },
+        (err) => {
+          console.warn("GPS initial silent check:", err.message);
+          if (isMountedRef.current) setFetchingGps(false);
+        },
+        { enableHighAccuracy: true, timeout: 25000, maximumAge: 5000 },
+      );
+    }
 
     axios.get(`${AI_SERVER_URL}/health`, { timeout: 2000 })
       .then((res) => {
@@ -1332,17 +1371,19 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
             <View style={styles.modalBody}>
               <Text style={styles.modalStepTitle}>
-                {isMobile ? "📌 Cara Mengaktifkan Lokasi di Smartphone:" : "📌 Cara Mengaktifkan Izin Lokasi di Laptop / PC:"}
+                {isMobile ? "📱 Panduan Pengaturan Lokasi Smartphone:" : "💻 Panduan Izin Lokasi di Laptop / PC:"}
               </Text>
               {isMobile ? (
                 <>
-                  <Text style={styles.modalStep}>1. Tarik menu atas layar HP & pastikan <Text style={{ fontWeight: "700" }}>Lokasi / GPS Aktif</Text>.</Text>
-                  <Text style={styles.modalStep}>2. Klik tombol <Text style={{ color: "#059669", fontWeight: "700" }}>Izinkan / Allow</Text> pada kotak konfirmasi browser.</Text>
+                  <Text style={styles.modalStep}>1. Buka menu atas layar HP $\rightarrow$ Nyalakan tombol <Text style={{ fontWeight: "700" }}>Lokasi / GPS</Text>.</Text>
+                  <Text style={styles.modalStep}>2. Pada browser (Chrome/Safari), klik ikon <Text style={{ fontWeight: "700" }}>Gembok / Setelan Situs</Text> di samping alamat web.</Text>
+                  <Text style={styles.modalStep}>3. Pilih menu <Text style={{ fontWeight: "700" }}>Izin Lokasi</Text> $\rightarrow$ Ubah menjadi <Text style={{ color: "#059669", fontWeight: "700" }}>Izinkan / Allow</Text>.</Text>
                 </>
               ) : (
                 <>
-                  <Text style={styles.modalStep}>1. Klik ikon <Text style={{ fontWeight: "700" }}>Setelan / Gembok</Text> di kiri address bar URL.</Text>
-                  <Text style={styles.modalStep}>2. Ubah opsi <Text style={{ fontWeight: "700" }}>Location</Text> menjadi <Text style={{ color: "#059669", fontWeight: "700" }}>Allow / Izinkan</Text>.</Text>
+                  <Text style={styles.modalStep}>1. Klik ikon <Text style={{ fontWeight: "700" }}>Gembok / Setelan Situs</Text> di sebelah kiri alamat web URL.</Text>
+                  <Text style={styles.modalStep}>2. Ubah opsi <Text style={{ fontWeight: "700" }}>Lokasi (Location)</Text> menjadi <Text style={{ color: "#059669", fontWeight: "700" }}>Izinkan / Allow</Text>.</Text>
+                  <Text style={styles.modalStep}>3. Pastikan Setelan Lokasi Windows / Mac Anda dalam keadaan aktif.</Text>
                 </>
               )}
             </View>
@@ -1350,12 +1391,12 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => activateGps(true)}>
                 <Ionicons name="navigate" size={15} color="#FFF" />
-                <Text style={styles.modalPrimaryBtnText}>{fetchingGps ? "Mencari Sinyal GPS..." : "Aktifkan GPS"}</Text>
+                <Text style={styles.modalPrimaryBtnText}>{fetchingGps ? "Mencari Sinyal GPS..." : "Periksa & Kunci GPS"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowGpsModal(false)}>
                 <Ionicons name="close-circle-outline" size={15} color="#6B7280" />
-                <Text style={[styles.modalSecondaryBtnText, { color: "#6B7280" }]}>Tidak / Nanti Saja</Text>
+                <Text style={[styles.modalSecondaryBtnText, { color: "#6B7280" }]}>Tutup / Nanti Saja</Text>
               </TouchableOpacity>
             </View>
           </View>
