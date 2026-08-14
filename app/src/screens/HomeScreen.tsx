@@ -33,11 +33,10 @@ const getApiServerUrl = () => {
       return "http://127.0.0.1:8000";
     }
   }
-  return process.env.EXPO_PUBLIC_AI_SERVER_URL || "https://spotbersih-api.loca.lt";
+  return process.env.EXPO_PUBLIC_AI_SERVER_URL || "https://sport-wildlife-pipes-acres.trycloudflare.com";
 };
 
 const AI_SERVER_URL = getApiServerUrl();
-axios.defaults.headers.common["bypass-tunnel-reminder"] = "1";
 
 interface DetectedBox {
   id: string;
