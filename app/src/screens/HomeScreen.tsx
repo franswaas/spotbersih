@@ -1325,14 +1325,14 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => activateGps(true)}>
-                <Ionicons name="refresh" size={15} color="#FFF" />
-                <Text style={styles.modalPrimaryBtnText}>Coba Kunci GPS Lagi</Text>
+              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => activateGps(false)}>
+                <Ionicons name="navigate" size={15} color="#FFF" />
+                <Text style={styles.modalPrimaryBtnText}>Aktifkan GPS</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => fetchIpLocation(true)}>
-                <Ionicons name="globe-outline" size={15} color="#059669" />
-                <Text style={styles.modalSecondaryBtnText}>Gunakan Lokasi Jaringan Otomatis</Text>
+              <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowGpsModal(false)}>
+                <Ionicons name="close-circle-outline" size={15} color="#6B7280" />
+                <Text style={[styles.modalSecondaryBtnText, { color: "#6B7280" }]}>Tidak / Nanti Saja</Text>
               </TouchableOpacity>
             </View>
           </View>
