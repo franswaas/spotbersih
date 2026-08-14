@@ -144,7 +144,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     } catch {}
   };
 
-  const activateGps = (showModalIfFailed = false) => {
+  const activateGps = (fromUser = false) => {
     setFetchingGps(true);
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -156,6 +156,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             setGpsLocation({ lat, lng, accuracy, source: "Satelit / Hardware GPS" });
             setFetchingGps(false);
             setShowGpsModal(false);
+
+            if (fromUser) {
+              Alert.alert("🟢 GPS Berhasil Aktif!", `Lokasi Anda berhasil terkunci secara presisi.`);
+            }
 
             // Accurate street reverse geocoding via OpenStreetMap
             try {
@@ -180,13 +184,24 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           console.warn("GPS error:", err);
           if (isMountedRef.current) {
             setFetchingGps(false);
-            if (showModalIfFailed) setShowGpsModal(true);
+            if (fromUser) {
+              setShowGpsModal(true);
+              Alert.alert(
+                "⚠️ GPS Belum Aktif",
+                isMobile
+                  ? "Sinyal GPS belum terdeteksi. Silakan tarik menu atas HP Anda, aktifkan tombol Lokasi / GPS di pengaturan, lalu klik Aktifkan GPS lagi."
+                  : "Izin lokasi browser belum diizinkan. Silakan klik ikon gembok di kiri address bar dan pilih Izinkan Lokasi."
+              );
+            }
           }
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
       );
     } else {
       setFetchingGps(false);
+      if (fromUser) {
+        Alert.alert("Perangkat Tidak Mendukung GPS", "Browser atau perangkat Anda tidak memiliki fitur geolokasi GPS.");
+      }
     }
   };
 
@@ -369,12 +384,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   }, [cameraActive, scanning]);
 
   const captureLiveReport = async () => {
-    if (liveBoxes.length === 0) {
-      Alert.alert("⚠️ Sampah Belum Terdeteksi", "Arahkan kamera ke objek sampah hingga kotak penanda AI muncul sebelum mengirim laporan.");
-      return;
-    }
     if (!gpsLocation) {
       setShowGpsModal(true);
+      Alert.alert(
+        "📍 GPS Lokasi Belum Aktif",
+        "Untuk membuat laporan sampah, Anda wajib mengaktifkan GPS lokasi terlebih dahulu agar posisi titik sampah dapat dipetakan secara akurat."
+      );
+      return;
+    }
+    if (liveBoxes.length === 0) {
+      Alert.alert("⚠️ Sampah Belum Terdeteksi", "Arahkan kamera ke objek sampah hingga kotak penanda AI muncul sebelum mengirim laporan.");
       return;
     }
     const video = videoRef.current;
@@ -491,15 +510,19 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
   const submitPhotoReport = async () => {
+    if (!gpsLocation) {
+      setShowGpsModal(true);
+      Alert.alert(
+        "📍 GPS Lokasi Belum Aktif",
+        "Untuk membuat laporan sampah, Anda wajib mengaktifkan GPS lokasi terlebih dahulu agar posisi titik sampah dapat dipetakan secara akurat."
+      );
+      return;
+    }
     if (photoBoxes.length === 0) {
       Alert.alert("⚠️ Tidak Ada Sampah Terdeteksi", "AI tidak mendeteksi sampah pada foto ini. Gunakan foto dengan sampah yang jelas sebelum mengirim laporan.");
       return;
     }
     if (!imageUri) return;
-    if (!gpsLocation) {
-      setShowGpsModal(true);
-      return;
-    }
     setPhotoSubmitting(true);
 
     let finalImg = imageUri;
@@ -1325,9 +1348,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => activateGps(false)}>
+              <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => activateGps(true)}>
                 <Ionicons name="navigate" size={15} color="#FFF" />
-                <Text style={styles.modalPrimaryBtnText}>Aktifkan GPS</Text>
+                <Text style={styles.modalPrimaryBtnText}>{fetchingGps ? "Mencari Sinyal GPS..." : "Aktifkan GPS"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowGpsModal(false)}>
