@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: spotbersih-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 8000
