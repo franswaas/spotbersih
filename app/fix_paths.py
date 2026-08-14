@@ -23,6 +23,12 @@ if os.path.exists(ionicons_path) and os.path.exists(index_html):
         font-weight: normal;
         font-style: normal;
       }}
+      @font-face {{
+        font-family: 'ionicons';
+        src: url(data:font/truetype;charset=utf-8;base64,{ionicons_b64}) format('truetype');
+        font-weight: normal;
+        font-style: normal;
+      }}
     </style>
     """
 
