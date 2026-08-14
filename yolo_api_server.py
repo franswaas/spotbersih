@@ -414,9 +414,9 @@ def detect_waste(payload: dict = Body(...)):
 
         raw_candidates = []
 
-        # Run Ensemble Detection Engine
+        # Run Ensemble Detection Engine (Ultra-Fast 416px, High Sensitivity)
         for model_name, model_instance in available_models:
-            results = model_instance(img_bgr, conf=0.25, verbose=False)
+            results = model_instance(img_bgr, conf=0.18, imgsz=416, verbose=False)
             res = results[0]
 
             for box in res.boxes:
