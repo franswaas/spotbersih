@@ -47,11 +47,9 @@ jobs:
           EXPO_PUBLIC_AI_SERVER_URL: ${{ secrets.EXPO_PUBLIC_AI_SERVER_URL }}
         run: npx expo export --platform web
 
-      - name: Make Asset Paths Relative
+      - name: Fix Assets & Inject Icon Fonts
         working-directory: app
-        run: |
-          sed -i 's|src="/_expo|src="./_expo|g' dist/index.html
-          sed -i 's|href="/favicon|href="./favicon|g' dist/index.html
+        run: python fix_paths.py
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4
