@@ -11,6 +11,7 @@ interface WasteDistributionMapProps {
   title?: string;
   subtitle?: string;
   height?: number;
+  userLocation?: { lat: number; lng: number } | null;
 }
 
 export default function WasteDistributionMap({
@@ -19,39 +20,30 @@ export default function WasteDistributionMap({
   title = "🗺️ Peta Sebaran Titik Sampah Warga",
   subtitle = "Pantau titik lokasi sampah yang dilaporkan secara real-time untuk memudahkan aksi gotong royong.",
   height = 220,
+  userLocation,
 }: WasteDistributionMapProps) {
-  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [internalPos, setInternalPos] = useState<{ lat: number; lng: number } | null>(null);
   const [fetchingGps, setFetchingGps] = useState(false);
 
-  // Automatically fetch user live GPS location
-  const fetchUserGps = (promptIfDisabled = false) => {
+  const userPos = userLocation || internalPos;
+
+  // Single GPS fetch only if not provided from parent
+  const fetchUserGps = () => {
+    if (userLocation) return;
     setFetchingGps(true);
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          setUserPos({
+          setInternalPos({
             lat: Number(pos.coords.latitude.toFixed(6)),
             lng: Number(pos.coords.longitude.toFixed(6)),
           });
           setFetchingGps(false);
         },
-        async () => {
-          // Fallback: try network IP location
-          try {
-            const res = await axios.get("https://ipapi.co/json/", { timeout: 5000 });
-            if (res.data?.latitude && res.data?.longitude) {
-              setUserPos({
-                lat: Number(res.data.latitude.toFixed(6)),
-                lng: Number(res.data.longitude.toFixed(6)),
-              });
-            }
-          } catch {
-            // Ignored
-          } finally {
-            setFetchingGps(false);
-          }
+        () => {
+          setFetchingGps(false);
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 },
       );
     } else {
       setFetchingGps(false);
@@ -59,8 +51,8 @@ export default function WasteDistributionMap({
   };
 
   useEffect(() => {
-    fetchUserGps(false);
-  }, []);
+    if (!userLocation) fetchUserGps();
+  }, [userLocation]);
 
   // Filter reports that have valid numeric coordinates
   const mappedReports = useMemo(
@@ -324,7 +316,7 @@ export default function WasteDistributionMap({
           ) : (
             <TouchableOpacity
               style={styles.activateGpsBadge}
-              onPress={() => fetchUserGps(true)}
+              onPress={fetchUserGps}
               activeOpacity={0.8}
             >
               <Ionicons name="navigate" size={11} color="#2563EB" />

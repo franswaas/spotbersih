@@ -148,7 +148,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     setFetchingGps(true);
     if (typeof navigator !== "undefined" && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
           if (isMountedRef.current) {
             const lat = Number(pos.coords.latitude.toFixed(6));
             const lng = Number(pos.coords.longitude.toFixed(6));
@@ -156,21 +156,37 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             setGpsLocation({ lat, lng, accuracy, source: "Satelit / Hardware GPS" });
             setFetchingGps(false);
             setShowGpsModal(false);
-            if (!customAddress) setCustomAddress(`Lokasi GPS (${lat}, ${lng})`);
+
+            // Accurate street reverse geocoding via OpenStreetMap
+            try {
+              const geoRes = await axios.get(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+                { timeout: 4000 }
+              );
+              if (isMountedRef.current && geoRes.data?.display_name) {
+                const addr = geoRes.data.address;
+                const road = addr?.road || addr?.suburb || addr?.village || addr?.neighbourhood || "";
+                const city = addr?.city || addr?.town || addr?.county || "";
+                const niceAddr = [road, city].filter(Boolean).join(", ");
+                if (niceAddr) setCustomAddress(niceAddr);
+                else setCustomAddress(geoRes.data.display_name.split(",").slice(0, 3).join(","));
+              }
+            } catch {
+              if (!customAddress) setCustomAddress(`Lokasi GPS (${lat}, ${lng})`);
+            }
           }
         },
-        async () => {
-          // Automatic silent fallback to IP network location
-          await fetchIpLocation(false);
+        (err) => {
+          console.warn("GPS error:", err);
           if (isMountedRef.current) {
             setFetchingGps(false);
-            if (showModalIfFailed && !gpsLocation) setShowGpsModal(true);
+            if (showModalIfFailed) setShowGpsModal(true);
           }
         },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
       );
     } else {
-      void fetchIpLocation(false);
+      setFetchingGps(false);
     }
   };
 
@@ -938,6 +954,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           <WasteDistributionMap
             reports={reports}
             height={180}
+            userLocation={gpsLocation}
             title="🗺️ Peta Sebaran Sampah Warga"
             subtitle="Pantau titik laporan secara real-time & bersihkan bersama."
           />
@@ -1236,7 +1253,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             {/* Waste Distribution Map in Riwayat */}
             <WasteDistributionMap
               reports={reports}
-              title="🗺️ Peta Sebaran Titik Sampah Terkini"
+              height={320}
+              userLocation={gpsLocation}
+              title="🗺️ Peta Interaktif Sebaran Sampah Warga"
               subtitle="Pantau persebaran lokasi sampah yang telah dilaporkan warga di sekitar Anda."
             />
 
