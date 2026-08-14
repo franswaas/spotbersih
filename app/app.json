@@ -2,9 +2,6 @@
   "expo": {
     "name": "SpotBersih",
     "slug": "spotbersih",
-    "experiments": {
-      "baseUrl": "/spotbersih"
-    },
     "plugins": [
       [
         "expo-image-picker",
