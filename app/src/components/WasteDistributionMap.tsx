@@ -298,7 +298,9 @@ export default function WasteDistributionMap({
             }
           });
 
-          if (group.length > 1) {
+          if (userPos && userPos.lat && userPos.lng) {
+            map.setView([userPos.lat, userPos.lng], 16);
+          } else if (group.length > 1) {
             map.fitBounds(group, { padding: [40, 40] });
           } else if (group.length === 1) {
             map.setView(group[0], 15);
@@ -354,6 +356,7 @@ export default function WasteDistributionMap({
       <View style={[styles.mapWindow, { height }]}>
         {Platform.OS === "web" ? (
           <iframe
+            key={userPos ? `map-${userPos.lat}-${userPos.lng}-${mappedReports.length}` : `map-init-${mappedReports.length}`}
             srcDoc={mapHtml}
             style={{
               width: "100%",
