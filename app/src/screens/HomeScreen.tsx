@@ -144,64 +144,88 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     } catch {}
   };
 
+  const onLocationResolved = async (lat: number, lng: number, accuracy: number, source: string, fromUser = false) => {
+    if (!isMountedRef.current) return;
+    setGpsLocation({ lat, lng, accuracy, source });
+    setFetchingGps(false);
+    setShowGpsModal(false);
+
+    if (fromUser) {
+      Alert.alert("🟢 Lokasi Berhasil Terkunci!", `Koordinat (${lat}, ${lng}) berhasil dideteksi.`);
+    }
+
+    // Accurate street reverse geocoding via OpenStreetMap
+    try {
+      const geoRes = await axios.get(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { timeout: 4000 }
+      );
+      if (isMountedRef.current && geoRes.data?.display_name) {
+        const addr = geoRes.data.address;
+        const road = addr?.road || addr?.suburb || addr?.village || addr?.neighbourhood || "";
+        const city = addr?.city || addr?.town || addr?.county || "";
+        const niceAddr = [road, city].filter(Boolean).join(", ");
+        if (niceAddr) setCustomAddress(niceAddr);
+        else setCustomAddress(geoRes.data.display_name.split(",").slice(0, 3).join(","));
+      }
+    } catch {
+      if (!customAddress) setCustomAddress(`Lokasi GPS (${lat}, ${lng})`);
+    }
+  };
+
   const activateGps = (fromUser = false) => {
     setFetchingGps(true);
+
     if (typeof navigator !== "undefined" && navigator.geolocation) {
+      // Tier 1: Hardware High-Accuracy GPS (ideal for mobile outdoors)
       navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          if (isMountedRef.current) {
-            const lat = Number(pos.coords.latitude.toFixed(6));
-            const lng = Number(pos.coords.longitude.toFixed(6));
-            const accuracy = Math.round(pos.coords.accuracy);
-            setGpsLocation({ lat, lng, accuracy, source: "Satelit / Hardware GPS" });
-            setFetchingGps(false);
-            setShowGpsModal(false);
+        (pos) => {
+          const lat = Number(pos.coords.latitude.toFixed(6));
+          const lng = Number(pos.coords.longitude.toFixed(6));
+          void onLocationResolved(lat, lng, Math.round(pos.coords.accuracy), "Satelit / GPS Presisi", fromUser);
+        },
+        () => {
+          // Tier 2: Standard Wi-Fi / Cell Positioning (reliable for Laptops and Indoors)
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              const lat = Number(pos.coords.latitude.toFixed(6));
+              const lng = Number(pos.coords.longitude.toFixed(6));
+              void onLocationResolved(lat, lng, Math.round(pos.coords.accuracy), "Lokasi Perangkat / Wi-Fi", fromUser);
+            },
+            async (err) => {
+              console.warn("Geolocation fallback to IP:", err.message);
+              // Tier 3: Network Geolocation Fallback
+              try {
+                const res = await axios.get("https://ipapi.co/json/", { timeout: 5000 });
+                if (res.data?.latitude && res.data?.longitude) {
+                  const lat = Number(res.data.latitude.toFixed(6));
+                  const lng = Number(res.data.longitude.toFixed(6));
+                  const city = res.data.city || res.data.region || "Lokasi Anda";
+                  void onLocationResolved(lat, lng, 100, `Jaringan (${city})`, fromUser);
+                  return;
+                }
+              } catch {}
 
-            if (fromUser) {
-              Alert.alert("🟢 GPS Berhasil Aktif!", `Lokasi Anda berhasil terkunci secara presisi.`);
-            }
-
-            // Accurate street reverse geocoding via OpenStreetMap
-            try {
-              const geoRes = await axios.get(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-                { timeout: 4000 }
-              );
-              if (isMountedRef.current && geoRes.data?.display_name) {
-                const addr = geoRes.data.address;
-                const road = addr?.road || addr?.suburb || addr?.village || addr?.neighbourhood || "";
-                const city = addr?.city || addr?.town || addr?.county || "";
-                const niceAddr = [road, city].filter(Boolean).join(", ");
-                if (niceAddr) setCustomAddress(niceAddr);
-                else setCustomAddress(geoRes.data.display_name.split(",").slice(0, 3).join(","));
+              if (isMountedRef.current) {
+                setFetchingGps(false);
+                if (fromUser) {
+                  setShowGpsModal(true);
+                  Alert.alert(
+                    "Izin Lokasi Belum Aktif",
+                    isMobile
+                      ? "Pastikan izin lokasi diizinkan pada browser dan tombol Lokasi di HP Anda telah menyala."
+                      : "Klik ikon gembok di sebelah kiri alamat web URL dan pilih Izinkan Lokasi."
+                  );
+                }
               }
-            } catch {
-              if (!customAddress) setCustomAddress(`Lokasi GPS (${lat}, ${lng})`);
-            }
-          }
+            },
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
+          );
         },
-        (err) => {
-          console.warn("GPS error:", err);
-          if (isMountedRef.current) {
-            setFetchingGps(false);
-            if (fromUser) {
-              setShowGpsModal(true);
-              Alert.alert(
-                "⚠️ GPS Belum Aktif",
-                isMobile
-                  ? "Sinyal GPS belum terdeteksi. Silakan tarik menu atas HP Anda, aktifkan tombol Lokasi / GPS di pengaturan, lalu klik Aktifkan GPS lagi."
-                  : "Izin lokasi browser belum diizinkan. Silakan klik ikon gembok di kiri address bar dan pilih Izinkan Lokasi."
-              );
-            }
-          }
-        },
-        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 30000 },
       );
     } else {
-      setFetchingGps(false);
-      if (fromUser) {
-        Alert.alert("Perangkat Tidak Mendukung GPS", "Browser atau perangkat Anda tidak memiliki fitur geolokasi GPS.");
-      }
+      void fetchIpLocation(fromUser);
     }
   };
 
@@ -212,9 +236,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         const lat = Number(res.data.latitude.toFixed(6));
         const lng = Number(res.data.longitude.toFixed(6));
         const city = res.data.city || res.data.region || "Lokasi Anda";
-        setGpsLocation({ lat, lng, accuracy: 100, source: `Jaringan ISP (${city})` });
-        setShowGpsModal(false);
-        if (!customAddress) setCustomAddress(`${city} (${lat}, ${lng})`);
+        void onLocationResolved(lat, lng, 100, `Jaringan ISP (${city})`, showAlert);
       }
     } catch {
       if (showAlert) {
