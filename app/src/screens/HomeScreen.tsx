@@ -159,19 +159,21 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           }
         },
         async () => {
+          // Automatic silent fallback to IP network location
+          await fetchIpLocation(false);
           if (isMountedRef.current) {
             setFetchingGps(false);
-            if (showModalIfFailed) setShowGpsModal(true);
+            if (showModalIfFailed && !gpsLocation) setShowGpsModal(true);
           }
         },
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 },
       );
     } else {
-      setFetchingGps(false);
+      void fetchIpLocation(false);
     }
   };
 
-  const fetchIpLocation = async () => {
+  const fetchIpLocation = async (showAlert = true) => {
     try {
       const res = await axios.get("https://ipapi.co/json/", { timeout: 6000 });
       if (res.data?.latitude && res.data?.longitude && isMountedRef.current) {
@@ -183,7 +185,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         if (!customAddress) setCustomAddress(`${city} (${lat}, ${lng})`);
       }
     } catch {
-      Alert.alert("Gagal Membaca Jaringan", "Pastikan koneksi internet aktif.");
+      if (showAlert) {
+        Alert.alert("Gagal Membaca Jaringan", "Pastikan koneksi internet aktif.");
+      }
     }
   };
 
@@ -1284,9 +1288,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={styles.modalStepTitle}>📌 Cara Mengaktifkan Izin Lokasi di Browser:</Text>
-              <Text style={styles.modalStep}>1. Klik ikon <Text style={{ fontWeight: "700" }}>Setelan / Gembok</Text> di kiri address bar URL.</Text>
-              <Text style={styles.modalStep}>2. Ubah opsi <Text style={{ fontWeight: "700" }}>Location</Text> menjadi <Text style={{ color: "#059669", fontWeight: "700" }}>Allow / Izinkan</Text>.</Text>
+              <Text style={styles.modalStepTitle}>
+                {isMobile ? "📌 Cara Mengaktifkan Lokasi di Smartphone:" : "📌 Cara Mengaktifkan Izin Lokasi di Laptop / PC:"}
+              </Text>
+              {isMobile ? (
+                <>
+                  <Text style={styles.modalStep}>1. Tarik menu atas layar HP & pastikan <Text style={{ fontWeight: "700" }}>Lokasi / GPS Aktif</Text>.</Text>
+                  <Text style={styles.modalStep}>2. Klik tombol <Text style={{ color: "#059669", fontWeight: "700" }}>Izinkan / Allow</Text> pada kotak konfirmasi browser.</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.modalStep}>1. Klik ikon <Text style={{ fontWeight: "700" }}>Setelan / Gembok</Text> di kiri address bar URL.</Text>
+                  <Text style={styles.modalStep}>2. Ubah opsi <Text style={{ fontWeight: "700" }}>Location</Text> menjadi <Text style={{ color: "#059669", fontWeight: "700" }}>Allow / Izinkan</Text>.</Text>
+                </>
+              )}
             </View>
 
             <View style={styles.modalActions}>
@@ -1295,7 +1310,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                 <Text style={styles.modalPrimaryBtnText}>Coba Kunci GPS Lagi</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.modalSecondaryBtn} onPress={fetchIpLocation}>
+              <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => fetchIpLocation(true)}>
                 <Ionicons name="globe-outline" size={15} color="#059669" />
                 <Text style={styles.modalSecondaryBtnText}>Gunakan Lokasi Jaringan Otomatis</Text>
               </TouchableOpacity>
