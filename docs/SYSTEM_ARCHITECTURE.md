@@ -1,5 +1,6 @@
 # 📘 Dokumentasi Arsitektur & Spesifikasi Sistem
 ## SpotBersih - Pantau Sampah, Bersihkan Bersama
+### Arsitektur Teknis Terpadu (AI, GIS, & Frontend Web Engine)
 
 ---
 
@@ -8,93 +9,99 @@
 
 ---
 
-## 2. Arsitektur Sistem (*System Architecture*)
+## 2. Diagram Arsitektur Sistem (*System Architecture*)
 
 ```mermaid
 graph TD
-    A[Pengguna / Kamera Web & HP] -->|Stream Video / Jepret Foto| B[Frontend: React Native Web / Expo]
-    B -->|GPS Geolocation API| C[Kordinat & Peta Sebaran Leaflet OSM]
-    B -->|Base64 Image Payload| D[AI Detection Engine: Python FastAPI]
-    D -->|Deteksi Objek & Klasifikasi| E[Ensemble Detection Models]
-    E -->|NMS + Filter Wajah + Anotasi| D
-    D -->|Sanitized Bounding Boxes & Categories| B
-    B -->|Simpan Laporan & Status Kebersihan| F[Local Storage & Database Sync]
-    F -->|Render Pin Peta & Arsip Riwayat| C
+    A[Kamera Laptop / Smartphone] -->|Stream Video / Jepret Foto| B[Frontend: React Native Web / Expo]
+    B -->|Hardware Geolocation Sensor| C[Leaflet OpenStreetMap GIS]
+    B -->|Base64 Image Payload| D[Cloudflare Tunnel / HTTPS Gateway]
+    D -->|HTTP POST /detect| E[Backend AI Engine: Python FastAPI]
+    E -->|Deteksi Objek & Klasifikasi YOLO| F[YOLO Model Inference]
+    F -->|NMS + Filter Wajah + Anotasi| E
+    E -->|Bounding Boxes & Kategori Bahasa Indonesia| B
+    B -->|Penyimpanan Laporan Lokal Persisten| G[Local Storage Data Store]
+    G -->|Render Pin Sebaran & Arsip Riwayat| C
 ```
 
-### Komponen Utama:
-1. **Frontend Web & Mobile (React Native + Expo)**:
-   - Antarmuka modern *split-screen dashboard* (tanpa *scrolling* berlebih).
-   - Tampilan kamera responsif dengan *live laser scanner*, *real-time bounding box*, dan *direct webcam shutter*.
-   - Manajemen riwayat pemindaian dan katalog edukasi pemilahan sampah.
-   - Peta interaktif Leaflet OpenStreetMap dengan pin lokasi GPS pengguna dan titik sebaran sampah.
+---
 
-2. **AI Inference & Detection Engine (FastAPI + OpenCV)**:
-   - Menerima gambar/frame kamera via HTTP POST `/detect`.
-   - Menggabungkan hasil inferensi model deteksi objek dengan *Non-Maximum Suppression (NMS)*.
-   - Dilengkapi *Face Filter* berbasis Haar Cascade untuk meminimalkan *false-positive* pada wajah/tubuh manusia.
-   - Menerjemahkan kategori sampah ke dalam Bahasa Indonesia dan panduan pembuangannya.
+## 3. Komponen Arsitektur Utama
 
-3. **GIS & Spatial Mapping Layer (Leaflet OpenStreetMap)**:
-   - Menampilkan koordinat GPS pengguna secara presisi dengan penanda animasi denyut biru (*pulsating user pin*).
-   - Menampilkan pin sampah merah interaktif dengan *pop-up* foto bukti, alamat patokan, dan jumlah sampah.
-
-4. **Siklus Aksi Komunitas ("Warga Bantu Warga")**:
-   - **📸 Lapor**: Warga memindai dan mengirim laporan titik sampah di lingkungannya.
-   - **🤝 Gotong Royong**: Warga sekitar melihat titik sampah pada peta dan membersihkannya bersama.
-   - **🧹 Hapus Laporan**: Warga menandai lokasi *"Sudah Bersih"*, menghapus laporan dari sistem untuk efisiensi penyimpanan dan menjaga peta tetap aktual.
+### A. Frontend Web & Mobile (React Native for Web + Expo)
+1. **Split-Screen Dashboard Ergonomis**:
+   - Layout 2 kolom responsif (*desktop/tablet*) dan bertumpuk mulus (*smartphone*) tanpa *scrolling* berlebih.
+   - Sisi kiri didedikasikan untuk modul pemindai AI (**Live Cam AI Scanner** & **Jepret / Unggah Foto**).
+   - Sisi kanan didedikasikan untuk **Peta Sebaran Sampah Interaktif** dan daftar **Laporan Aktif Warga**.
+2. **Arsitektur Aset In-Memory Base64**:
+   - Semua logo, ikon kamera, dan ilustrasi di-render menggunakan konstanta *Base64 in-memory* di `app/src/constants/assets.ts`, mengeliminasi error *404 File Not Found* atau *image flicker*.
+3. **Injeksi Font Vektor Tanpa Request Jaringan**:
+   - Font icon `Ionicons.ttf` diinjeksi langsung dalam bentuk *Base64 `@font-face`* ke dalam `dist/index.html` via `fix_paths.py`, menjamin seluruh ikon muncul sempurna di semua browser tanpa kotak kosong (*rectangle fallback*).
+4. **Anti-Cache Invalidation System**:
+   - Skrip `fix_paths.py` menambahkan meta tag anti-cache (`Cache-Control: no-cache, no-store, must-revalidate`) dan parameter *query string* versi unik (`?v=<timestamp>`) pada seluruh bundel JavaScript untuk mencegah browser menyimpan cache basi.
 
 ---
 
-## 3. Alur Deteksi & Validasi Ketat AI
-
-1. **Aktivasi Kamera**: Pengguna dapat memilih mode **Live Cam AI** (pemindaian langsung) atau **Jepret / Unggah Foto**.
-2. **Ekstraksi Frame**: Frontend mengambil cuplikan resolusi optimal (640x360) dari elemen video.
-3. **Inferensi AI**: Server memproses gambar, memfilter noise/wajah, dan mengembalikan data koordinat persentase `(x, y, width, height)`, tingkat keyakinan (*confidence*), serta kategori.
-4. **Validasi Wajib Deteksi**: Tombol **"Laporkan Sampah"** dikunci (*disabled*) hingga AI berhasil mendeteksi minimal 1 objek sampah valid di dalam bingkai kamera.
-5. **Anotasi Permanen**: Saat laporan dikirim, kotak deteksi dibakar (*burned-in*) ke dalam kanvas foto laporan agar riwayat dapat diaudit dengan jelas.
+### B. Lapisan Spasial & Sistem Informasi Geografis (GIS)
+1. **Sensor GPS Hardware Murni (*Pure Hardware Geolocation*)**:
+   - Menggunakan `navigator.geolocation.getCurrentPosition` langsung pada chip GPS perangkat tanpa perkiraan server internet (*zero IP guessing*).
+   - Menjamin bahwa ketika GPS perangkat mati, sistem dengan jujur berstatus `🔴 GPS Belum Aktif`.
+   - Ketika GPS dinyalakan dan diizinkan, koordinat langsung terkunci dengan akurasi meter.
+2. **Pencarian Alamat Otomatis (*Reverse Geocoding*)**:
+   - Koordinat `(latitude, longitude)` otomatis diterjemahkan ke nama jalan, kelurahan, dan kecamatan menggunakan **OpenStreetMap Nominatim API**.
+3. **Penetapan Titik Interaktif (*Interactive Tap-to-Pin*)**:
+   - Pengguna dapat mengetuk (*click/tap*) titik mana saja pada peta Leaflet untuk memindahkan atau menentukan pin lokasi sampah secara presisi.
+4. **Reaktivitas Iframe Dinamis (*Dynamic Iframe Key*)**:
+   - Elemen peta di-render di dalam `<iframe>` dengan *reactive key* (`key={userPos.lat-userPos.lng}`) sehingga peta langsung memusatkan pandangan (*viewport centering*) ke lokasi pengguna seketika koordinat GPS terkunci.
 
 ---
 
-## 4. 4 Kategori Pemilahan & Panduan Tempat Sampah
+### C. Backend AI Inference Engine (FastAPI + YOLO)
+1. **Model Deteksi Objek**:
+   - Menggunakan model Ultralytics YOLO berkecepatan tinggi yang dilatih untuk mengenali berbagai kategori sampah.
+2. **Filter Wajah & Pencegahan False-Positive**:
+   - Integrasi Haar Cascade Classifier untuk mendeteksi wajah/tubuh manusia dan mendiskualifikasi deteksi sampah yang tumpang tindih dengan manusia.
+3. **Penerjemahan Kontekstual & 4 Kategori Pemilahan**:
+   - Mengelompokkan setiap sampah ke dalam 4 kategori tempat sampah:
+     - 🟡 **Daur Ulang (Recyclable)**
+     - 🔘 **Residu (Non-Recyclable)**
+     - 🟢 **Organik (Organic)**
+     - 🔴 **B3 Berbahaya (Hazardous)**
+4. **Validasi Wajib Deteksi**:
+   - Tombol pengiriman laporan dikunci secara otomatis hingga AI mendeteksi minimal 1 objek sampah valid di dalam bingkai kamera.
 
-| Kategori | Warna Tong | Jenis Sampah Contoh | Rekomendasi Penanganan |
+---
+
+### D. Jaringan & Konektivitas Global (Cloudflare Tunnel)
+- Menggunakan **Cloudflare Quick Tunnel (`cloudflared.exe`)** yang menghubungkan server lokal FastAPI (port 8000) ke internet publik melalui enkripsi TLS/HTTPS tanpa perlu *port-forwarding* router atau IP publik statis.
+- Memungkinkan smartphone yang terhubung ke jaringan seluler (4G/5G) berkomunikasi langsung dengan backend AI laptop.
+
+---
+
+## 4. Siklus Aksi Komunitas ("Warga Bantu Warga")
+
+```
+[1. 📸 Lapor Sampah] ──> Warga memindai dan mengirim laporan titik sampah ber-GPS.
+          │
+          ▼
+[2. 🤝 Gotong Royong] ──> Warga sekitar melihat titik sampah pada peta dan membersihkannya bersama.
+          │
+          ▼
+[3. 🧹 Hapus Laporan] ──> Warga menekan "Tandai Bersih & Hapus" untuk memperbarui peta secara real-time.
+```
+
+---
+
+## 5. Ringkasan Endpoint API Backend
+
+| Method | Endpoint | Deskripsi | Payload / Respon |
 | :--- | :--- | :--- | :--- |
-| **Daur Ulang (Recyclable)** | 🟡 Kuning | Botol Plastik, Kardus, Kaleng, Kertas, Gelas Plastik | Bilas sisa kotoran, remas agar hemat ruang, salurkan ke Bank Sampah. |
-| **Residu (Non-Recyclable)** | 🔘 Abu-Abu | Kantong Kresek, Styrofoam, Sachet Makanan, Puntung Rokok | Bungkus rapat dan buang ke tempat sampah residu menuju TPA. |
-| **Organik (Organic)** | 🟢 Hijau | Sisa Makanan, Daun Kering, Kulit Buah, Sayuran | Olah menjadi pupuk kompos atau pakan maggot / ternak. |
-| **B3 Berbahaya (Hazardous)**| 🔴 Merah | Baterai Bekas, Masker Medis, Bohlam, Limbah Elektronik | Pisahkan khusus dan serahkan ke *drop point e-waste* resmi. |
+| `GET` | `/health` | Memeriksa status kesehatan server AI | `{"status": "online", "model": "loaded"}` |
+| `POST` | `/detect` | Mengirim gambar untuk inferensi deteksi sampah | **Req**: `{"image": "data:image/jpeg;base64,..."}`<br>**Res**: `{"detections": [...], "count": 2}` |
 
 ---
 
-## 5. Keamanan & Sanitasi Sistem (*Security Hardening*)
-
-- **Sanitasi Respon API**: Endpoint API backend hanya mengembalikan data publik bersih (`label`, `confidence`, `category`, `bounding boxes`). Tidak membocorkan path file server, nama arsitektur internal, atau struktur sistem.
-- **Proteksi Git**: File bobot model (`*.pt`), `.env`, cache Python (`__pycache__`), dan folder build React Native/Expo diabaikan oleh `.gitignore`.
-- **Privasi Pengguna**: Akses GPS hanya diminta dengan persetujuan eksplisit melalui dialog browser standar.
-
----
-
-## 6. Panduan Menjalankan Sistem
-
-### Prasyarat:
-- Node.js (>= v18) & NPM
-- Python 3.9 - 3.11
-- Webcam / Kamera HP
-
-### Langkah Menjalankan:
-1. **Jalankan Backend AI Engine**:
-   ```bash
-   python yolo_api_server.py
-   ```
-   *(Server berjalan di `http://127.0.0.1:8000`)*
-
-2. **Jalankan Frontend Web**:
-   ```bash
-   cd app
-   npm run typecheck
-   npx expo start --web --port 8081
-   # atau sajikan build dist:
-   # npx serve -l 3000 dist
-   ```
-   *(Buka browser di `http://localhost:3000`)*
+## 6. Prosedur Audit & Pengujian Mutu
+1. **Type Safety**: Menjalankan `npm run typecheck` (`tsc --noEmit`) dengan standar nol toleransi error.
+2. **Kompilasi Web**: Menjalankan `npx expo export --platform web && python fix_paths.py` untuk menghasilkan bundel produksi bersih di `dist/`.
+3. **Penyajian Web**: Menjalankan `npx serve -l 3000 dist` atau mengakses GitHub Pages `https://franswaas.github.io/spotbersih/`.

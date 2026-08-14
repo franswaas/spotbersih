@@ -1,7 +1,7 @@
 # 🧠 Keterampilan Teknis & Kapabilitas Sistem
-## Skills & Engineering Competencies Reference
+## SpotBersih - Skills & Engineering Competencies Reference
 
-Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa perangkat lunak (*software engineering competencies*), serta metodologi yang diimplementasikan pada proyek **Smart Solid Waste Management System**.
+Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa perangkat lunak (*software engineering competencies*), serta metodologi yang diimplementasikan pada proyek **SpotBersih (Smart Solid Waste Management System)**.
 
 ---
 
@@ -9,16 +9,15 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 
 ### 🎯 Kapabilitas yang Diterapkan:
 - **Real-Time Object Detection**:
-  - Deteksi objek sampah dari video stream kamera webcam dan foto statis secara *real-time* dengan latensi rendah (<300ms/frame).
-- **Multi-Model Inference & Non-Maximum Suppression (NMS)**:
-  - Menggabungkan probabilitas prediksi dari beberapa model pendeteksi objek secara simultan.
-  - Menerapkan kalkulasi Intersection over Union (IoU) dinamis untuk mengeliminasi kotak deteksi duplikat atau tumpang tindih.
+  - Deteksi objek sampah dari video stream kamera webcam dan foto statis secara *real-time* dengan latensi rendah (<200ms/frame).
+- **Non-Maximum Suppression (NMS) & Model Filtering**:
+  - Menggabungkan probabilitas prediksi dari model YOLO dan menerapkan kalkulasi Intersection over Union (IoU) dinamis untuk mengeliminasi kotak deteksi duplikat atau tumpang tindih.
 - **False-Positive Filtering & Face Detection Discard**:
   - Integrasi OpenCV Haar Cascade Classifier untuk mendeteksi wajah dan tubuh manusia secara otomatis, mencegah kesalahan deteksi sampah pada manusia.
 - **Dynamic Bounding Box Scaling**:
   - Normalisasi koordinat piksel mentah menjadi persentase `(0 - 100%)` sehingga kotak penanda AI responsif terhadap berbagai ukuran layar perangkat (HP, Tablet, Laptop, Desktop).
 - **Bilingual Contextual Mapping**:
-  - Pemetaan kelas deteksi AI ke Bahasa Indonesia lengkap dengan kategori tempat sampah dan panduan daur ulang.
+  - Pemetaan kelas deteksi AI ke Bahasa Indonesia lengkap dengan 4 kategori tempat sampah dan rekomendasi penanganan lingkungan.
 
 ---
 
@@ -31,37 +30,38 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
   - Desain *dashboard* 2 kolom (*side-by-side*) bebas *scrolling* yang menggabungkan area pemindai AI di sisi kiri dengan peta sebaran dan laporan aktif di sisi kanan.
 - **Direct Webcam Shutter Integration**:
   - Penggunaan `navigator.mediaDevices.getUserMedia` langsung pada elemen `<video>` HTML5 dengan tombol rana (*shutter*) untuk pengalaman jepret foto instan tanpa harus membuka dialog file OS.
-- **Precision Snug-Fit Button UI**:
-  - Desain tombol ergonomis (*pill & rounded style*) dengan perataan tengah (*center alignment*) yang pas mengikuti panjang teks dan ikon tanpa ruang kosong memanjang.
-- **Canvas-Based Image Annotation**:
-  - Pembakaran (*burned-in*) kotak penanda deteksi AI secara permanen ke dalam kanvas gambar saat laporan dibuat untuk bukti audit visual yang valid.
+- **In-Memory Base64 Asset Engineering**:
+  - Seluruh logo dan ikon disematkan sebagai string Base64 langsung dalam memori JavaScript (`app/src/constants/assets.ts`), mengeliminasi masalah *missing assets* dan *404 File Not Found*.
+- **Zero-Network Vector Font Injection**:
+  - Injeksi langsung font `Ionicons.ttf` dalam format Base64 `@font-face` ke dalam file `dist/index.html` via `fix_paths.py`, memastikan seluruh ikon tampil sempurna tanpa kotak kosong.
+- **Anti-Cache Invalidation System**:
+  - Penyisipan header anti-cache dan parameter query versi unik (`?v=<timestamp>`) untuk menjamin pengguna selalu menerima versi aplikasi terbaru tanpa tersangkut cache browser lama.
 
 ---
 
 ## 3. Sistem Informasi Geografis (GIS) & Pemetaan Spasial
 
 ### 🎯 Kapabilitas yang Diterapkan:
-- **Leaflet OpenStreetMap Integration**:
-  - Integrasi peta open-source interaktif berkinerja tinggi tanpa dependensi API key berbayar.
-- **Live GPS Tracking & Centering**:
-  - Penentuan posisi pengguna secara presisi menggunakan HTML5 Geolocation API dengan fallback ke Geo-IP service.
-  - Marker lokasi pengguna beranimasi denyut biru (*pulsating blue dot*) dengan tombol auto-center *"🎯 Ke Posisi Saya"*.
-- **Interactive Waste Hotspot Pins**:
-  - Penanda titik sampah merah (`🗑️`) yang dapat diklik untuk menampilkan *pop-up* pratinjau foto, jumlah sampah, dan alamat patokan lokasi.
-- **Cross-Tab Synchronization**:
-  - Peta sebaran otomatis terintegrasi baik pada tab **Dashboard Utama** maupun tab **Riwayat Laporan**.
+- **Pure Device Hardware Geolocation**:
+  - Pengambilan koordinat GPS langsung dari chip sensor hardware perangkat (`navigator.geolocation.getCurrentPosition`) tanpa penebakan ISP/IP provider yang tidak akurat.
+- **OpenStreetMap Nominatim Reverse Geocoding**:
+  - Konversi otomatis titik koordinat lintang dan bujur menjadi alamat jalan, kelurahan, dan kota secara *real-time*.
+- **Interactive Spatial Tap-to-Pin**:
+  - Fitur ketuk peta interaktif yang memungkinkan pengguna menyesuaikan dan menancapkan pin lokasi sampah langsung ke gang/titik yang diinginkan.
+- **Dynamic Iframe Key Reactivity**:
+  - Penggunaan *reactive key* pada iframe Leaflet sehingga peta langsung melompat dan memusatkan pandangan (*viewport auto-center*) ke posisi pengguna seketika GPS terkunci.
 
 ---
 
-## 4. Backend Microservices & API Engineering
+## 4. Backend Microservices, Networking, & Tunneling
 
 ### 🎯 Kapabilitas yang Diterapkan:
 - **FastAPI Microservices**:
   - Pemrosesan request HTTP asinkron berbasis Python dengan performa tinggi.
-- **Image Decoding & Memory Buffer Processing**:
-  - Penerimaan payload gambar Base64 / Data URL yang didecode langsung di memori RAM menggunakan `numpy` dan `cv2.imdecode` tanpa menulis file sementara ke disk, memaksimalkan kecepatan I/O.
-- **CORS & Endpoint Security Hardening**:
-  - Konfigurasi proteksi CORS dan sanitasi struktur respon JSON untuk menyembunyikan detail arsitektur internal server.
+- **Image Decoding & In-Memory Buffer**:
+  - Payload Base64 didecode langsung di RAM menggunakan `numpy` dan `cv2.imdecode` tanpa menulis file sementara ke disk, memaksimalkan kecepatan I/O.
+- **Cloudflare Quick Tunnel Integration**:
+  - Menghubungkan server lokal FastAPI ke internet publik dengan enkripsi TLS/HTTPS aman menggunakan `cloudflared.exe`, memungkinkan smartphone di jaringan 4G/5G berkomunikasi langsung dengan AI server lokal.
 
 ---
 
@@ -81,8 +81,8 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 
 | Bidang | Teknologi / Tools | Implementasi Nyata pada Proyek |
 | :--- | :--- | :--- |
-| **AI & Computer Vision** | Python, OpenCV, PyTorch, Ultralytics, NumPy | Deteksi sampah real-time, NMS, filter wajah, normalisasi koordinat |
-| **Frontend Framework** | React Native, Expo Web, TypeScript, CSS | Split-screen dashboard, canvas annotation, animasi laser |
-| **GIS & Geolocation** | Leaflet, OpenStreetMap, Geolocation API | Peta sebaran sampah, tracking GPS pengguna, pin interaktif |
-| **Backend & API** | FastAPI, Uvicorn, REST API | Endpoint `/detect` dan `/health`, decoding base64 in-memory |
+| **AI & Computer Vision** | Python, OpenCV, PyTorch, Ultralytics YOLO, NumPy | Deteksi sampah real-time, NMS, filter wajah, normalisasi koordinat |
+| **Frontend Framework** | React Native, Expo Web, TypeScript, CSS | Split-screen dashboard, in-memory Base64 assets, font injection |
+| **GIS & Geolocation** | Leaflet, OpenStreetMap, Nominatim, Geolocation API | Peta sebaran sampah, tracking GPS perangkat, tap-to-pin interaktif |
+| **Networking & Tunneling**| Cloudflare Tunnel, FastAPI, Uvicorn, REST API | Enkripsi HTTPS, tunneling lintas jaringan 4G/5G, decoding RAM |
 | **Quality & Security** | TypeScript, ESLint, Git, .gitignore | Strict Typecheck, sanitasi data respon, proteksi repositori |
