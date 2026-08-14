@@ -954,6 +954,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.paneCardRight}>
           <WasteDistributionMap
             reports={reports}
+            height={180}
             title="🗺️ Peta Sebaran Sampah Warga"
             subtitle="Pantau titik laporan secara real-time & bersihkan bersama."
           />
@@ -1105,9 +1106,9 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               {renderDashboardContent()}
             </ScrollView>
           ) : (
-            <View style={styles.splitGrid}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.splitGrid}>
               {renderDashboardContent()}
-            </View>
+            </ScrollView>
           )}
         </View>
 
@@ -1680,7 +1681,8 @@ const styles = StyleSheet.create({
   },
   activeReportsScroll: {
     flex: 1,
-    maxHeight: 280,
+    minHeight: 180,
+    maxHeight: 480,
   },
   emptyReportsBox: {
     alignItems: "center",

@@ -10,6 +10,7 @@ interface WasteDistributionMapProps {
   onSelectReport?: (report: Report) => void;
   title?: string;
   subtitle?: string;
+  height?: number;
 }
 
 export default function WasteDistributionMap({
@@ -17,6 +18,7 @@ export default function WasteDistributionMap({
   onSelectReport,
   title = "🗺️ Peta Sebaran Titik Sampah Warga",
   subtitle = "Pantau titik lokasi sampah yang dilaporkan secara real-time untuk memudahkan aksi gotong royong.",
+  height = 220,
 }: WasteDistributionMapProps) {
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [fetchingGps, setFetchingGps] = useState(false);
@@ -335,7 +337,7 @@ export default function WasteDistributionMap({
       </View>
 
       {/* Map Container Window */}
-      <View style={styles.mapWindow}>
+      <View style={[styles.mapWindow, { height }]}>
         {Platform.OS === "web" ? (
           <iframe
             srcDoc={mapHtml}
