@@ -109,21 +109,5 @@ export function getLocalReports(): Report[] {
 }
 
 export async function getReports(userEmail: string): Promise<Report[]> {
-  const localList = getLocalReports();
-
-  try {
-    const response = await api.post("/api/v1/mycomplaints", { userEmail }, { timeout: 4000 });
-    const reports: DashboardReport[] = response.data?.reports ?? [];
-    const serverList = reports.map(toReport);
-
-    const merged = [...localList];
-    for (const s of serverList) {
-      if (!merged.some((m) => m.id === s.id)) {
-        merged.push(s);
-      }
-    }
-    return merged;
-  } catch {
-    return localList;
-  }
+  return getLocalReports();
 }
