@@ -452,6 +452,8 @@ def delete_report_endpoint(report_id: str = None, payload: dict = Body(None)):
     }
 
 @app.post("/reports/clear")
+@app.delete("/reports/clear")
+@app.get("/reports/clear")
 def clear_reports_endpoint():
     save_shared_reports([])
     return {

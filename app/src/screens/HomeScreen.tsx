@@ -1336,6 +1336,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   onPress={async () => {
                     await clearAllReports();
                     setReports([]);
+                    Alert.alert("✨ Semua Laporan Dibersihkan!", "Seluruh arsip titik sampah telah dihapus.");
                   }}
                 >
                   <Ionicons name="trash-bin" size={14} color="#EF4444" />

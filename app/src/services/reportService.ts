@@ -57,7 +57,6 @@ export function getLocalReports(): Report[] {
  */
 export async function getReports(userEmail?: string): Promise<Report[]> {
   const serverUrl = getAiServerUrl();
-  const localReports = getLocalReports();
 
   try {
     const res = await axios.get(`${serverUrl}/reports?_t=${Date.now()}`, {
@@ -69,22 +68,9 @@ export async function getReports(userEmail?: string): Promise<Report[]> {
       timeout: 4500,
     });
     if (res.data?.status === "success" && Array.isArray(res.data?.reports)) {
-      let serverReports: Report[] = res.data.reports;
+      const serverReports: Report[] = res.data.reports;
 
-      // Auto-heal: If local device has unsynced offline reports, push them to server
-      const unsynced = localReports.filter(
-        (l) => !serverReports.some((s) => s.id === l.id || s.display_id === l.display_id)
-      );
-      if (unsynced.length > 0) {
-        for (const un of unsynced) {
-          try {
-            await axios.post(`${serverUrl}/reports`, un, { timeout: 8000 });
-            serverReports = [un, ...serverReports];
-          } catch {}
-        }
-      }
-
-      // Authoritative update: server list is the single source of truth
+      // Authoritative update: server list is the single absolute source of truth
       if (Platform.OS === "web" && typeof window !== "undefined" && window.localStorage) {
         window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serverReports.slice(0, 200)));
       }
@@ -94,7 +80,7 @@ export async function getReports(userEmail?: string): Promise<Report[]> {
     // Backend offline or unreachable, fallback to local storage
   }
 
-  return localReports;
+  return getLocalReports();
 }
 
 /**
