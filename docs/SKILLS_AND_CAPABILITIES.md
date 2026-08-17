@@ -8,9 +8,11 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 ## 1. Computer Vision & Kecerdasan Buatan (*Artificial Intelligence*)
 
 ### 🎯 Kapabilitas yang Diterapkan:
-- **Real-Time Object Detection**:
+- **Multi-Model Object Detection Architecture**:
+  - Orkestrasi tiga bobot model YOLO (Hrutik 8-Class, Roboflow 22-Class, Underwater Denoised 15-Class) untuk deteksi sampah yang komprehensif di berbagai medan.
+- **Real-Time Video Stream Inference**:
   - Deteksi objek sampah dari video stream kamera webcam dan foto statis secara *real-time* dengan latensi rendah (<200ms/frame).
-- **Non-Maximum Suppression (NMS) & Model Filtering**:
+- **Non-Maximum Suppression (NMS) & Confidence Filtering**:
   - Menggabungkan probabilitas prediksi dari model YOLO dan menerapkan kalkulasi Intersection over Union (IoU) dinamis untuk mengeliminasi kotak deteksi duplikat atau tumpang tindih.
 - **False-Positive Filtering & Face Detection Discard**:
   - Integrasi OpenCV Haar Cascade Classifier untuk mendeteksi wajah dan tubuh manusia secara otomatis, mencegah kesalahan deteksi sampah pada manusia.
@@ -26,6 +28,8 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 ### 🎯 Kapabilitas yang Diterapkan:
 - **React Native for Web & TypeScript**:
   - Arsitektur berbasis komponen (*component-driven architecture*) dengan *strict type safety* (`tsc --noEmit` 0 error).
+- **Dynamic AI Connection Switcher & LocalStorage Persistence**:
+  - Rekayasa modal konfigurasi backend interaktif yang memungkinkan pengguna mengganti endpoint API secara *on-the-fly* dengan validasi status `/health` instan.
 - **Modern Split-Screen Dashboard Layout**:
   - Desain *dashboard* 2 kolom (*side-by-side*) bebas *scrolling* yang menggabungkan area pemindai AI di sisi kiri dengan peta sebaran dan laporan aktif di sisi kanan.
 - **Direct Webcam Shutter Integration**:
@@ -60,8 +64,8 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
   - Pemrosesan request HTTP asinkron berbasis Python dengan performa tinggi.
 - **Image Decoding & In-Memory Buffer**:
   - Payload Base64 didecode langsung di RAM menggunakan `numpy` dan `cv2.imdecode` tanpa menulis file sementara ke disk, memaksimalkan kecepatan I/O.
-- **Cloudflare Quick Tunnel Integration**:
-  - Menghubungkan server lokal FastAPI ke internet publik dengan enkripsi TLS/HTTPS aman menggunakan `cloudflared.exe`, memungkinkan smartphone di jaringan 4G/5G berkomunikasi langsung dengan AI server lokal.
+- **Cloudflare Quick Tunnel Integration & Mixed Content Solution**:
+  - Menghubungkan server lokal FastAPI ke internet publik dengan enkripsi TLS/HTTPS aman menggunakan `cloudflared.exe`, mengatasi blokade *Mixed Content* saat diakses dari GitHub Pages.
 
 ---
 
@@ -81,8 +85,8 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 
 | Bidang | Teknologi / Tools | Implementasi Nyata pada Proyek |
 | :--- | :--- | :--- |
-| **AI & Computer Vision** | Python, OpenCV, PyTorch, Ultralytics YOLO, NumPy | Deteksi sampah real-time, NMS, filter wajah, normalisasi koordinat |
-| **Frontend Framework** | React Native, Expo Web, TypeScript, CSS | Split-screen dashboard, in-memory Base64 assets, font injection |
+| **AI & Computer Vision** | Python, OpenCV, PyTorch, Ultralytics YOLO, NumPy | Multi-model YOLO inference, NMS, filter wajah, normalisasi koordinat |
+| **Frontend Framework** | React Native, Expo Web, TypeScript, CSS | Split-screen dashboard, in-memory Base64 assets, dynamic AI switcher |
 | **GIS & Geolocation** | Leaflet, OpenStreetMap, Nominatim, Geolocation API | Peta sebaran sampah, tracking GPS perangkat, tap-to-pin interaktif |
-| **Networking & Tunneling**| Cloudflare Tunnel, FastAPI, Uvicorn, REST API | Enkripsi HTTPS, tunneling lintas jaringan 4G/5G, decoding RAM |
+| **Networking & Tunneling**| Cloudflare Tunnel, FastAPI, Uvicorn, REST API | Enkripsi HTTPS, penanganan Mixed-Content, tunneling 4G/5G, in-memory decoding |
 | **Quality & Security** | TypeScript, ESLint, Git, .gitignore | Strict Typecheck, sanitasi data respon, proteksi repositori |

@@ -1,6 +1,6 @@
 # 📘 Dokumentasi Arsitektur & Spesifikasi Sistem
 ## SpotBersih - Pantau Sampah, Bersihkan Bersama
-### Arsitektur Teknis Terpadu (AI, GIS, & Frontend Web Engine)
+### Arsitektur Teknis Terpadu (AI, GIS, Networking, & Frontend Web Engine)
 
 ---
 
@@ -15,13 +15,14 @@
 graph TD
     A[Kamera Laptop / Smartphone] -->|Stream Video / Jepret Foto| B[Frontend: React Native Web / Expo]
     B -->|Hardware Geolocation Sensor| C[Leaflet OpenStreetMap GIS]
-    B -->|Base64 Image Payload| D[Cloudflare Tunnel / HTTPS Gateway]
-    D -->|HTTP POST /detect| E[Backend AI Engine: Python FastAPI]
-    E -->|Deteksi Objek & Klasifikasi YOLO| F[YOLO Model Inference]
-    F -->|NMS + Filter Wajah + Anotasi| E
-    E -->|Bounding Boxes & Kategori Bahasa Indonesia| B
-    B -->|Penyimpanan Laporan Lokal Persisten| G[Local Storage Data Store]
-    G -->|Render Pin Sebaran & Arsip Riwayat| C
+    B -->|Resolusi URL: LocalStorage / Default| D[Dynamic AI Config Manager]
+    D -->|Request HTTPS / TLS| E[Cloudflare Quick Tunnel / Gateway]
+    E -->|HTTP POST /detect Base64 Payload| F[Backend AI Engine: Python FastAPI]
+    F -->|Deteksi Objek & Klasifikasi Multi-Model| G[YOLO Multi-Model Inference Engine]
+    G -->|NMS + Filter Wajah + Anotasi| F
+    F -->|Bounding Boxes & Kategori Bahasa Indonesia| B
+    B -->|Penyimpanan Laporan Lokal Persisten| H[Local Storage Data Store]
+    H -->|Render Pin Sebaran & Arsip Riwayat| C
 ```
 
 ---
@@ -33,11 +34,18 @@ graph TD
    - Layout 2 kolom responsif (*desktop/tablet*) dan bertumpuk mulus (*smartphone*) tanpa *scrolling* berlebih.
    - Sisi kiri didedikasikan untuk modul pemindai AI (**Live Cam AI Scanner** & **Jepret / Unggah Foto**).
    - Sisi kanan didedikasikan untuk **Peta Sebaran Sampah Interaktif** dan daftar **Laporan Aktif Warga**.
-2. **Arsitektur Aset In-Memory Base64**:
+2. **Dynamic AI Server Configuration Engine (`app/src/config/aiServer.ts`)**:
+   - Menyediakan resolusi URL cerdas dengan 4 tingkat prioritas:
+     1. Kustom URL pengguna yang tersimpan di `localStorage` (`SPOTBERSIH_AI_SERVER_URL`).
+     2. Deteksi otomatis `localhost` / `127.0.0.1` ke port `8000`.
+     3. Variabel *environment* build (`EXPO_PUBLIC_AI_SERVER_URL`).
+     4. Default HTTPS Quick Tunnel untuk GitHub Pages.
+   - Memfasilitasi penggantian URL secara *on-the-fly* lewat antarmuka modal tanpa perlu *rebuild* kode.
+3. **Arsitektur Aset In-Memory Base64**:
    - Semua logo, ikon kamera, dan ilustrasi di-render menggunakan konstanta *Base64 in-memory* di `app/src/constants/assets.ts`, mengeliminasi error *404 File Not Found* atau *image flicker*.
-3. **Injeksi Font Vektor Tanpa Request Jaringan**:
+4. **Injeksi Font Vektor Tanpa Request Jaringan**:
    - Font icon `Ionicons.ttf` diinjeksi langsung dalam bentuk *Base64 `@font-face`* ke dalam `dist/index.html` via `fix_paths.py`, menjamin seluruh ikon muncul sempurna di semua browser tanpa kotak kosong (*rectangle fallback*).
-4. **Anti-Cache Invalidation System**:
+5. **Anti-Cache Invalidation System**:
    - Skrip `fix_paths.py` menambahkan meta tag anti-cache (`Cache-Control: no-cache, no-store, must-revalidate`) dan parameter *query string* versi unik (`?v=<timestamp>`) pada seluruh bundel JavaScript untuk mencegah browser menyimpan cache basi.
 
 ---
@@ -56,9 +64,12 @@ graph TD
 
 ---
 
-### C. Backend AI Inference Engine (FastAPI + YOLO)
-1. **Model Deteksi Objek**:
-   - Menggunakan model Ultralytics YOLO berkecepatan tinggi yang dilatih untuk mengenali berbagai kategori sampah.
+### C. Backend AI Inference Engine (FastAPI + YOLO Multi-Model)
+1. **Multi-Model Object Detection**:
+   - Memuat 3 arsitektur model YOLO:
+     - Model 1: **Hrutik 8-Class Model** (`ml_models/hrutik_yolov8/best.pt`)
+     - Model 2: **Roboflow 22-Class Model** (`ml_models/best.pt`)
+     - Model 3: **Underwater Denoised 15-Class Model** (`ml_models/underwater_yolov8/best.pt`)
 2. **Filter Wajah & Pencegahan False-Positive**:
    - Integrasi Haar Cascade Classifier untuk mendeteksi wajah/tubuh manusia dan mendiskualifikasi deteksi sampah yang tumpang tindih dengan manusia.
 3. **Penerjemahan Kontekstual & 4 Kategori Pemilahan**:
@@ -72,9 +83,10 @@ graph TD
 
 ---
 
-### D. Jaringan & Konektivitas Global (Cloudflare Tunnel)
-- Menggunakan **Cloudflare Quick Tunnel (`cloudflared.exe`)** yang menghubungkan server lokal FastAPI (port 8000) ke internet publik melalui enkripsi TLS/HTTPS tanpa perlu *port-forwarding* router atau IP publik statis.
-- Memungkinkan smartphone yang terhubung ke jaringan seluler (4G/5G) berkomunikasi langsung dengan backend AI laptop.
+### D. Jaringan & Konektivitas Global (Cloudflare Tunnel & Mixed Content Handling)
+- **Zero Port-Forwarding**: Menggunakan **Cloudflare Quick Tunnel (`cloudflared.exe`)** yang menghubungkan server lokal FastAPI (port 8000) ke internet publik melalui enkripsi TLS/HTTPS.
+- **Solusi Mixed-Content**: Memungkinkan klien web HTTPS (GitHub Pages) memanggil endpoint AI secara aman tanpa diblokir oleh browser.
+- **Cross-Network Compatibility**: Smartphone yang terhubung ke jaringan seluler (4G/5G) dapat berkomunikasi langsung dengan backend AI di laptop pengguna.
 
 ---
 
@@ -96,12 +108,12 @@ graph TD
 
 | Method | Endpoint | Deskripsi | Payload / Respon |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/health` | Memeriksa status kesehatan server AI | `{"status": "online", "model": "loaded"}` |
-| `POST` | `/detect` | Mengirim gambar untuk inferensi deteksi sampah | **Req**: `{"image": "data:image/jpeg;base64,..."}`<br>**Res**: `{"detections": [...], "count": 2}` |
+| `GET` | `/health` | Memeriksa status kesehatan server AI | `{"status": "online", "ready": true}` |
+| `POST` | `/detect` | Mengirim gambar untuk inferensi deteksi sampah | **Req**: `{"image": "data:image/jpeg;base64,...", "confidence": 0.18}`<br>**Res**: `{"status": "success", "detections": [...], "detected_count": 2}` |
 
 ---
 
 ## 6. Prosedur Audit & Pengujian Mutu
 1. **Type Safety**: Menjalankan `npm run typecheck` (`tsc --noEmit`) dengan standar nol toleransi error.
 2. **Kompilasi Web**: Menjalankan `npx expo export --platform web && python fix_paths.py` untuk menghasilkan bundel produksi bersih di `dist/`.
-3. **Penyajian Web**: Menjalankan `npx serve -l 3000 dist` atau mengakses GitHub Pages `https://franswaas.github.io/spotbersih/`.
+3. **Penyajian Web**: Menjalankan `python -m http.server 3000 --directory app/dist` atau mengakses GitHub Pages `https://franswaas.github.io/spotbersih/`.
