@@ -1,4 +1,5 @@
 import io
+import json
 import base64
 import os
 import cv2
@@ -379,13 +380,75 @@ def is_strictly_face(box_coords, faces):
             return True
     return False
 
+REPORTS_FILE = os.path.join(os.path.dirname(__file__), "shared_reports.json")
+
+def load_shared_reports():
+    if os.path.exists(REPORTS_FILE):
+        try:
+            with open(REPORTS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"Error loading shared reports: {e}")
+    return []
+
+def save_shared_reports(reports):
+    try:
+        with open(REPORTS_FILE, "w", encoding="utf-8") as f:
+            json.dump(reports, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving shared reports: {e}")
+
 @app.get("/")
 @app.get("/health")
 def health():
     return {
         "status": "online",
         "service": "Smart Waste AI Detection API",
-        "ready": len(available_models) > 0
+        "ready": len(available_models) > 0,
+        "shared_reports_count": len(load_shared_reports())
+    }
+
+@app.get("/reports")
+def get_reports_endpoint():
+    reports = load_shared_reports()
+    return {
+        "status": "success",
+        "count": len(reports),
+        "reports": reports
+    }
+
+@app.post("/reports")
+def save_report_endpoint(report: dict = Body(...)):
+    reports = load_shared_reports()
+    rep_id = report.get("id")
+    disp_id = report.get("display_id")
+    filtered = [r for r in reports if r.get("id") != rep_id and r.get("display_id") != disp_id]
+    updated = [report] + filtered
+    updated = updated[:200]
+    save_shared_reports(updated)
+    return {
+        "status": "success",
+        "report": report,
+        "total_count": len(updated)
+    }
+
+@app.delete("/reports/{report_id}")
+def delete_report_endpoint(report_id: str):
+    reports = load_shared_reports()
+    filtered = [r for r in reports if r.get("id") != report_id and r.get("display_id") != report_id]
+    save_shared_reports(filtered)
+    return {
+        "status": "success",
+        "deleted_id": report_id,
+        "remaining_count": len(filtered)
+    }
+
+@app.post("/reports/clear")
+def clear_reports_endpoint():
+    save_shared_reports([])
+    return {
+        "status": "success",
+        "message": "All shared reports cleared"
     }
 
 @app.post("/detect")

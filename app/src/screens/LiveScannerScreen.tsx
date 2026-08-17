@@ -18,7 +18,7 @@ import axios from "axios";
 
 import { useAuth } from "../context/AuthContext";
 import { submitReport as uploadReport } from "../services/detectionService";
-import { saveLocalReport } from "../services/reportService";
+import { saveReport } from "../services/reportService";
 import { colors, radius, shadow, spacing } from "../theme";
 import type { RootStackParamList } from "../navigation/types";
 
@@ -377,22 +377,13 @@ export default function LiveScannerScreen({
   };
 
   const captureAndReportNow = async () => {
-    let loc = gpsLocation;
-    if (!loc) {
-      try {
-        const res = await axios.get("https://ipwho.is/", { timeout: 3000 });
-        if (res.data?.latitude && res.data?.longitude) {
-          loc = {
-            lat: Number(res.data.latitude.toFixed(5)),
-            lng: Number(res.data.longitude.toFixed(5)),
-          };
-          setGpsLocation(loc);
-        }
-      } catch {}
-    }
-    if (!loc) {
-      loc = { lat: -6.2088, lng: 106.8456 };
-      setGpsLocation(loc);
+    if (!gpsLocation) {
+      Alert.alert(
+        "📍 GPS Belum Aktif",
+        "Laporan pemindaian memerlukan koordinat GPS asli Anda. Silakan klik tombol 'Aktifkan GPS' di pojok atas layar terlebih dahulu.",
+      );
+      void requestGpsLocation(true);
+      return;
     }
 
     const video = videoRef.current;
@@ -440,15 +431,15 @@ export default function LiveScannerScreen({
       });
     }
     const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.88);
-    const lat = loc.lat;
-    const lng = loc.lng;
+    const lat = gpsLocation.lat;
+    const lng = gpsLocation.lng;
     const userEmail = email || "tamu.edukasi@wastemanagement.id";
 
     try {
       const res = await uploadReport(dataUrl, lat, lng, userEmail);
 
-      // Save to local report history
-      saveLocalReport({
+      // Save to centralized database
+      await saveReport({
         id: `LOC-${Date.now()}`,
         display_id: `LIVE-${Date.now().toString().slice(-4)}`,
         latitude: lat,
@@ -485,7 +476,7 @@ export default function LiveScannerScreen({
       );
     } catch {
       // Local fallback save
-      saveLocalReport({
+      await saveReport({
         id: `LOC-${Date.now()}`,
         display_id: `LIVE-${Date.now().toString().slice(-4)}`,
         latitude: lat,

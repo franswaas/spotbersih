@@ -19,7 +19,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import axios from "axios";
 
 import { submitReport as uploadReport } from "../services/detectionService";
-import { saveLocalReport } from "../services/reportService";
+import { saveReport } from "../services/reportService";
 import { UploadResult } from "../types/detection";
 import { useAuth } from "../context/AuthContext";
 import FadeInView from "../components/FadeInView";
@@ -349,30 +349,19 @@ export default function ReportScreen({ navigation }: ReportScreenProps) {
       return;
     }
 
-    let loc = gpsLocation;
-    if (!loc) {
-      try {
-        const res = await axios.get("https://ipwho.is/", { timeout: 3000 });
-        if (res.data?.latitude && res.data?.longitude) {
-          loc = {
-            lat: Number(res.data.latitude.toFixed(6)),
-            lng: Number(res.data.longitude.toFixed(6)),
-            accuracy: 500,
-            source: `Jaringan ISP (${res.data.city || 'Wilayah'})`,
-          };
-          setGpsLocation(loc);
-        }
-      } catch {}
-    }
-    if (!loc) {
-      loc = { lat: -6.2088, lng: 106.8456, accuracy: 1000, source: "Lokasi Default" };
-      setGpsLocation(loc);
+    if (!gpsLocation) {
+      setShowGpsModal(true);
+      Alert.alert(
+        "📍 GPS Belum Aktif",
+        "Sistem memerlukan koordinat GPS asli perangkat untuk memastikan keakuratan titik laporan sampah."
+      );
+      return;
     }
 
     setLoading(true);
 
-    const lat = loc.lat;
-    const lng = loc.lng;
+    const lat = gpsLocation.lat;
+    const lng = gpsLocation.lng;
     const resolvedAddress = customAddress.trim() || `Lat: ${lat}, Long: ${lng}`;
     const userEmail = email || "tamu.edukasi@wastemanagement.id";
 
@@ -432,8 +421,8 @@ export default function ReportScreen({ navigation }: ReportScreenProps) {
     try {
       const response = await uploadReport(finalImageToSave, lat, lng, userEmail);
 
-      // Save to local report history with true GPS & bounding box coordinates
-      saveLocalReport({
+      // Save to centralized database
+      await saveReport({
         id: `LOC-${Date.now()}`,
         display_id: `RPT-${Date.now().toString().slice(-4)}`,
         latitude: lat,
@@ -465,7 +454,7 @@ export default function ReportScreen({ navigation }: ReportScreenProps) {
       }
     } catch {
       // Local fallback save with true GPS & bounding box coordinates
-      saveLocalReport({
+      await saveReport({
         id: `LOC-${Date.now()}`,
         display_id: `RPT-${Date.now().toString().slice(-4)}`,
         latitude: lat,
