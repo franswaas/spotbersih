@@ -1,6 +1,6 @@
 # 📘 Dokumentasi Arsitektur & Spesifikasi Sistem
 ## SpotBersih - Pantau Sampah, Bersihkan Bersama
-### Arsitektur Teknis Terpadu (AI, GIS, Networking, & Frontend Web Engine)
+### Arsitektur Teknis Terpadu (AI, GIS, Real-time Sync Engine, & Frontend Web Engine)
 
 ---
 
@@ -21,7 +21,8 @@ graph TD
     F -->|Deteksi Objek & Klasifikasi Multi-Model| G[YOLO Multi-Model Inference Engine]
     G -->|NMS + Filter Wajah + Anotasi| F
     F -->|Bounding Boxes & Kategori Bahasa Indonesia| B
-    B -->|Penyimpanan Laporan Lokal Persisten| H[Local Storage Data Store]
+    B -->|Sync Real-Time 3s| H[Shared Database Server: shared_reports.json]
+    H -->|Sinkronisasi Otomatis Lintas Perangkat| I[Laptop & Smartphone Warga]
     H -->|Render Pin Sebaran & Arsip Riwayat| C
 ```
 
@@ -34,18 +35,23 @@ graph TD
    - Layout 2 kolom responsif (*desktop/tablet*) dan bertumpuk mulus (*smartphone*) tanpa *scrolling* berlebih.
    - Sisi kiri didedikasikan untuk modul pemindai AI (**Live Cam AI Scanner** & **Jepret / Unggah Foto**).
    - Sisi kanan didedikasikan untuk **Peta Sebaran Sampah Interaktif** dan daftar **Laporan Aktif Warga**.
-2. **Dynamic AI Server Configuration Engine (`app/src/config/aiServer.ts`)**:
+   - **Single-Card Containment Design**: Seluruh komponen peta dan banner status *`✨ Semua Lokasi Bersih & Asri`* terbungkus secara presisi di dalam satu frame kartu putih tanpa kebocoran visual (*zero overflow*).
+2. **Full-Screen High-Resolution Lightbox Modal**:
+   - Menampilkan modal pratinjau foto resolusi tinggi dengan tema *Dark-Glassmorphism*.
+   - Memvisualisasikan kotak penanda AI (*bounding boxes*), akurasi deteksi, dan tag pill kategori.
+   - Dilengkapi tombol cepat 1-klik **`🧹 Tandai Bersih & Hapus Laporan`**.
+3. **Dynamic AI Server Configuration Engine (`app/src/config/aiServer.ts`)**:
    - Menyediakan resolusi URL cerdas dengan 4 tingkat prioritas:
      1. Kustom URL pengguna yang tersimpan di `localStorage` (`SPOTBERSIH_AI_SERVER_URL`).
      2. Deteksi otomatis `localhost` / `127.0.0.1` ke port `8000`.
      3. Variabel *environment* build (`EXPO_PUBLIC_AI_SERVER_URL`).
      4. Default HTTPS Quick Tunnel untuk GitHub Pages.
    - Memfasilitasi penggantian URL secara *on-the-fly* lewat antarmuka modal tanpa perlu *rebuild* kode.
-3. **Arsitektur Aset In-Memory Base64**:
+4. **Arsitektur Aset In-Memory Base64**:
    - Semua logo, ikon kamera, dan ilustrasi di-render menggunakan konstanta *Base64 in-memory* di `app/src/constants/assets.ts`, mengeliminasi error *404 File Not Found* atau *image flicker*.
-4. **Injeksi Font Vektor Tanpa Request Jaringan**:
+5. **Injeksi Font Vektor Tanpa Request Jaringan**:
    - Font icon `Ionicons.ttf` diinjeksi langsung dalam bentuk *Base64 `@font-face`* ke dalam `dist/index.html` via `fix_paths.py`, menjamin seluruh ikon muncul sempurna di semua browser tanpa kotak kosong (*rectangle fallback*).
-5. **Anti-Cache Invalidation System**:
+6. **Anti-Cache Invalidation System**:
    - Skrip `fix_paths.py` menambahkan meta tag anti-cache (`Cache-Control: no-cache, no-store, must-revalidate`) dan parameter *query string* versi unik (`?v=<timestamp>`) pada seluruh bundel JavaScript untuk mencegah browser menyimpan cache basi.
 
 ---
@@ -64,21 +70,22 @@ graph TD
 
 ---
 
-### C. Backend AI Inference Engine (FastAPI + YOLO Multi-Model)
+### C. Backend AI Inference & Real-Time Sync Engine (FastAPI + YOLO)
 1. **Multi-Model Object Detection**:
    - Memuat 3 arsitektur model YOLO:
      - Model 1: **Hrutik 8-Class Model** (`ml_models/hrutik_yolov8/best.pt`)
      - Model 2: **Roboflow 22-Class Model** (`ml_models/best.pt`)
      - Model 3: **Underwater Denoised 15-Class Model** (`ml_models/underwater_yolov8/best.pt`)
-2. **Filter Wajah & Pencegahan False-Positive**:
+2. **Centralized Real-Time Sync API (`/reports`)**:
+   - Mengelola titik laporan bersama melalui shared storage backend (`shared_reports.json`).
+   - Mendukung endpoint `GET /reports`, `POST /reports`, `POST /reports/delete`, dan `POST /reports/clear`.
+   - **Strict Single Source of Truth**: Menghilangkan *resurrection bug*, memastikan laporan yang dihapus hilang serentak di laptop maupun smartphone.
+3. **Smart Image Downscaling & Permanent Box Stamping**:
+   - Gambar dikompresi ke resolusi optimal $960 \times 720$ px (~70 KB payload).
+   - Garis pembatas objek (4px) dan badge keyakinan AI dipatri secara permanen ke kanvas sebelum disimpan.
+4. **Filter Wajah & Pencegahan False-Positive**:
    - Integrasi Haar Cascade Classifier untuk mendeteksi wajah/tubuh manusia dan mendiskualifikasi deteksi sampah yang tumpang tindih dengan manusia.
-3. **Penerjemahan Kontekstual & 4 Kategori Pemilahan**:
-   - Mengelompokkan setiap sampah ke dalam 4 kategori tempat sampah:
-     - 🟡 **Daur Ulang (Recyclable)**
-     - 🔘 **Residu (Non-Recyclable)**
-     - 🟢 **Organik (Organic)**
-     - 🔴 **B3 Berbahaya (Hazardous)**
-4. **Validasi Wajib Deteksi**:
+5. **Validasi Wajib Deteksi**:
    - Tombol pengiriman laporan dikunci secara otomatis hingga AI mendeteksi minimal 1 objek sampah valid di dalam bingkai kamera.
 
 ---
@@ -99,21 +106,11 @@ graph TD
 [2. 🤝 Gotong Royong] ──> Warga sekitar melihat titik sampah pada peta dan membersihkannya bersama.
           │
           ▼
-[3. 🧹 Hapus Laporan] ──> Warga menekan "Tandai Bersih & Hapus" untuk memperbarui peta secara real-time.
+[3. ✨ Tandai Bersih] ──> 1-Klik tombol "Sudah Bersih" menghapus laporan di seluruh perangkat secara real-time.
 ```
 
 ---
 
-## 5. Ringkasan Endpoint API Backend
-
-| Method | Endpoint | Deskripsi | Payload / Respon |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/health` | Memeriksa status kesehatan server AI | `{"status": "online", "ready": true}` |
-| `POST` | `/detect` | Mengirim gambar untuk inferensi deteksi sampah | **Req**: `{"image": "data:image/jpeg;base64,...", "confidence": 0.18}`<br>**Res**: `{"status": "success", "detections": [...], "detected_count": 2}` |
-
----
-
-## 6. Prosedur Audit & Pengujian Mutu
-1. **Type Safety**: Menjalankan `npm run typecheck` (`tsc --noEmit`) dengan standar nol toleransi error.
-2. **Kompilasi Web**: Menjalankan `npx expo export --platform web && python fix_paths.py` untuk menghasilkan bundel produksi bersih di `dist/`.
-3. **Penyajian Web**: Menjalankan `python -m http.server 3000 --directory app/dist` atau mengakses GitHub Pages `https://franswaas.github.io/spotbersih/`.
+## 5. Ringkasan Keamanan & Privasi
+- **Privasi Kamera & Lokasi**: Seluruh pemrosesan video dilakukan secara lokal di perangkat klien, hanya *frame* ber-sampah yang dikirim ke backend saat pengguna menekan tombol lapor.
+- **Filter Wajah**: Mengaburkan atau mengabaikan deteksi pada wajah manusia untuk menjaga privasi warga.

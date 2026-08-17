@@ -1,15 +1,15 @@
 # 🚀 Panduan Lengkap Deploy Online (GitHub Pages & Cloud AI)
 ## Platform SpotBersih - Pantau Sampah, Bersihkan Bersama
 
-Dokumen ini menjelaskan secara lengkap arsitektur dan langkah-langkah *deployment* **SpotBersih** agar dapat diakses publik dari browser smartphone maupun laptop di mana saja dengan performa deteksi AI yang optimal.
+Dokumen ini menjelaskan secara lengkap arsitektur dan langkah-langkah *deployment* **SpotBersih** agar dapat diakses publik dari browser smartphone maupun laptop di mana saja dengan performa deteksi AI yang optimal serta sinkronisasi multi-perangkat secara *real-time*.
 
 ---
 
 ## 📋 Ikhtisar Arsitektur Deployment
 
 1. **Frontend Web App (`SpotBersih`)**: Di-host secara gratis dan otomatis di **GitHub Pages** ([https://franswaas.github.io/spotbersih/](https://franswaas.github.io/spotbersih/)).
-2. **Backend AI Engine (`YOLO API`)**:
-   - **Opsi A (Hybrid Lokal & Cloudflare Tunnel - Direkomendasikan)**: Menjalankan server AI di laptop dan menyambungkannya ke internet via **Cloudflare Quick Tunnel** (Sangat cepat, latensi rendah, GPU terakselerasi, dan gratis).
+2. **Backend AI Engine & Database Terpusat (`YOLO API + Shared Reports`)**:
+   - **Opsi A (Hybrid Lokal & Cloudflare Tunnel - Direkomendasikan)**: Menjalankan server AI & database sinkronisasi di laptop dan menyambungkannya ke internet via **Cloudflare Quick Tunnel** (Sangat cepat, latensi rendah, GPU terakselerasi, dan gratis).
    - **Opsi B (Cloud Hosted 24 Jam)**: Di-host di **Hugging Face Spaces** (Docker/FastAPI).
 
 ---
@@ -30,7 +30,7 @@ Cara termudah dan paling stabil untuk menghubungkan smartphone di mana saja deng
 1. **Jalankan Skrip Otomatis**:
    Cukup klik ganda file **`start_spotbersih.bat`** di folder utama proyek.
 2. Skrip akan membuka 3 jendela proses:
-   - Server AI YOLO di `http://127.0.0.1:8000`.
+   - Server AI YOLO & Database Sinkronisasi di `http://127.0.0.1:8000`.
    - Cloudflare Quick Tunnel yang menghasilkan URL publik HTTPS instan (contoh: `https://absent-driving-someone-rural.trycloudflare.com`).
    - Server Web Frontend Lokal di `http://localhost:3000`.
 3. **Hubungkan di Smartphone / GitHub Pages**:
@@ -38,7 +38,7 @@ Cara termudah dan paling stabil untuk menghubungkan smartphone di mana saja deng
    - Klik tombol **`AI Offline ⚙️` / `AI Aktif`** di samping tab pemindai.
    - Pilih **"Gunakan Cloudflare Tunnel Aktif"** (atau tempel URL dari terminal Cloudflare).
    - Klik **"Simpan & Tes Koneksi"**.
-   - Status seketika berubah menjadi **🟢 AI Aktif** dan kamera smartphone langsung mendeteksi sampah.
+   - Status seketika berubah menjadi **🟢 AI Aktif** dan kamera smartphone langsung mendeteksi sampah serta menyinkronkan laporan ke laptop secara instan.
 
 ---
 
@@ -62,7 +62,7 @@ git push origin main
 ```
 
 ### Langkah 3: Konfigurasi GitHub Actions
-Workflow otomatis di `.github/workflows/deploy.yml` akan secara otomatis mengompilasi dan menayangkan versi terbaru ke GitHub Pages dalam hitungan 1-2 menit.
+Workflow otomatis di `.github/workflows/deploy.yml` dengan lingkungan Python 3.11 akan secara otomatis mengompilasi dan menayangkan versi terbaru ke GitHub Pages dalam hitungan 1-2 menit.
 
 ---
 
@@ -90,6 +90,7 @@ Jika Anda ingin backend AI berjalan 24 jam nonstop tanpa perlu laptop menyala:
 
 ## 🎉 Hasil Akhir:
 - **Aplikasi Web**: Aktif di `https://franswaas.github.io/spotbersih/`.
-- **Deteksi AI**: Beroperasi *real-time* via Cloudflare Tunnel / Hugging Face.
+- **Deteksi AI & Sinkronisasi**: Beroperasi *real-time* via Cloudflare Tunnel / Hugging Face.
+- **Pratinjau Lightbox**: Zoom foto resolusi tinggi dengan bounding boxes AI.
 - **Geolokasi**: Terhubung langsung ke sensor GPS perangkat pengguna dan peta Leaflet OpenStreetMap.
 - **Manajemen Server Fleksibel**: Pengguna dapat mengganti URL AI kapan saja langsung dari tampilan web tanpa perlu redeploy kode.

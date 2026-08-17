@@ -16,8 +16,8 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
   - Menggabungkan probabilitas prediksi dari model YOLO dan menerapkan kalkulasi Intersection over Union (IoU) dinamis untuk mengeliminasi kotak deteksi duplikat atau tumpang tindih.
 - **False-Positive Filtering & Face Detection Discard**:
   - Integrasi OpenCV Haar Cascade Classifier untuk mendeteksi wajah dan tubuh manusia secara otomatis, mencegah kesalahan deteksi sampah pada manusia.
-- **Dynamic Bounding Box Scaling**:
-  - Normalisasi koordinat piksel mentah menjadi persentase `(0 - 100%)` sehingga kotak penanda AI responsif terhadap berbagai ukuran layar perangkat (HP, Tablet, Laptop, Desktop).
+- **Dynamic Bounding Box Scaling & Permanent Stamping**:
+  - Normalisasi koordinat piksel mentah menjadi persentase `(0 - 100%)` sehingga kotak penanda AI responsif terhadap berbagai ukuran layar, serta pematrian permanen kotak penanda tebal (4px) ke kanvas gambar laporan sebelum dikirim.
 - **Bilingual Contextual Mapping**:
   - Pemetaan kelas deteksi AI ke Bahasa Indonesia lengkap dengan 4 kategori tempat sampah dan rekomendasi penanganan lingkungan.
 
@@ -28,10 +28,12 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 ### 🎯 Kapabilitas yang Diterapkan:
 - **React Native for Web & TypeScript**:
   - Arsitektur berbasis komponen (*component-driven architecture*) dengan *strict type safety* (`tsc --noEmit` 0 error).
+- **Full-Screen High-Resolution Lightbox Modal**:
+  - Modal pembesar foto sinematik bertema *Dark-Glassmorphism* dengan visualisasi *bounding box*, pill kategori sampah terdeteksi, dan aksi 1-klik *Tandai Bersih*.
+- **Single-Card Containment Architecture**:
+  - Desain *dashboard* 2 kolom seimbang di mana peta dan banner konfirmasi *`✨ Semua Lokasi Bersih & Asri`* terbungkus rapi di dalam satu kartu tanpa *visual overflow*.
 - **Dynamic AI Connection Switcher & LocalStorage Persistence**:
   - Rekayasa modal konfigurasi backend interaktif yang memungkinkan pengguna mengganti endpoint API secara *on-the-fly* dengan validasi status `/health` instan.
-- **Modern Split-Screen Dashboard Layout**:
-  - Desain *dashboard* 2 kolom (*side-by-side*) bebas *scrolling* yang menggabungkan area pemindai AI di sisi kiri dengan peta sebaran dan laporan aktif di sisi kanan.
 - **Direct Webcam Shutter Integration**:
   - Penggunaan `navigator.mediaDevices.getUserMedia` langsung pada elemen `<video>` HTML5 dengan tombol rana (*shutter*) untuk pengalaman jepret foto instan tanpa harus membuka dialog file OS.
 - **In-Memory Base64 Asset Engineering**:
@@ -57,13 +59,15 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 
 ---
 
-## 4. Backend Microservices, Networking, & Tunneling
+## 4. Backend Microservices, Networking, & Cross-Device Synchronization
 
 ### 🎯 Kapabilitas yang Diterapkan:
 - **FastAPI Microservices**:
-  - Pemrosesan request HTTP asinkron berbasis Python dengan performa tinggi.
-- **Image Decoding & In-Memory Buffer**:
-  - Payload Base64 didecode langsung di RAM menggunakan `numpy` dan `cv2.imdecode` tanpa menulis file sementara ke disk, memaksimalkan kecepatan I/O.
+  - Pemrosesan request HTTP asinkron berbasis Python dengan performa tinggi untuk deteksi dan manajemen database laporan.
+- **Cross-Device Real-Time Sync Engine**:
+  - Sinkronisasi instan antara laptop, smartphone, dan tablet melalui endpoint `/reports` terpusat dengan mekanisme anti-resurrection.
+- **Smart Image Downscaling**:
+  - Kompresi kanvas pintar ($960 \times 720$ px, 76% JPEG quality) memangkas beban payload sebesar 98% (~70 KB) untuk transmisi data super cepat.
 - **Cloudflare Quick Tunnel Integration & Mixed Content Solution**:
   - Menghubungkan server lokal FastAPI ke internet publik dengan enkripsi TLS/HTTPS aman menggunakan `cloudflared.exe`, mengatasi blokade *Mixed Content* saat diakses dari GitHub Pages.
 
@@ -86,7 +90,8 @@ Dokumen ini memetakan seluruh keahlian teknis (*skills*), kapabilitas rekayasa p
 | Bidang | Teknologi / Tools | Implementasi Nyata pada Proyek |
 | :--- | :--- | :--- |
 | **AI & Computer Vision** | Python, OpenCV, PyTorch, Ultralytics YOLO, NumPy | Multi-model YOLO inference, NMS, filter wajah, normalisasi koordinat |
-| **Frontend Framework** | React Native, Expo Web, TypeScript, CSS | Split-screen dashboard, in-memory Base64 assets, dynamic AI switcher |
+| **Frontend Framework** | React Native, Expo Web, TypeScript, CSS | Split-screen dashboard, Lightbox modal, in-memory Base64 assets, dynamic AI switcher |
+| **Cross-Device Sync** | FastAPI, Axios, LocalStorage, JSON Store | Single source of truth, auto 3s sync, smart 98% image compression |
 | **GIS & Geolocation** | Leaflet, OpenStreetMap, Nominatim, Geolocation API | Peta sebaran sampah, tracking GPS perangkat, tap-to-pin interaktif |
 | **Networking & Tunneling**| Cloudflare Tunnel, FastAPI, Uvicorn, REST API | Enkripsi HTTPS, penanganan Mixed-Content, tunneling 4G/5G, in-memory decoding |
 | **Quality & Security** | TypeScript, ESLint, Git, .gitignore | Strict Typecheck, sanitasi data respon, proteksi repositori |
