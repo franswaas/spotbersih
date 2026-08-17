@@ -151,3 +151,6 @@ augmentation/
 
 #preprocessing
 preprocessing/
+
+# Cloudflare binary
+cloudflared.exe

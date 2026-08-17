@@ -41,7 +41,9 @@ interface DetectedBox {
   missCount?: number;
 }
 
-const LOCAL_YOLO_URL = "http://127.0.0.1:8000";
+import { getAiServerUrl } from "../config/aiServer";
+
+const LOCAL_YOLO_URL = getAiServerUrl();
 const MAX_MISS_FRAMES = 2;
 
 export default function LiveScannerScreen({

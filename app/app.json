@@ -14,7 +14,8 @@
         {
           "locationWhenInUsePermission": "Allow WasteWatch to use your location to place your garbage report accurately."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "version": "1.0.0",
     "orientation": "portrait",

@@ -26,18 +26,7 @@ import { Report } from "../types/report";
 import { radius, shadow, spacing } from "../theme";
 import type { RootStackParamList } from "../navigation/types";
 import { APP_LOGO, ICON_CAMERA, ICON_REPORT } from "../constants/assets";
-
-const getApiServerUrl = () => {
-  if (typeof window !== "undefined") {
-    const host = window.location.hostname;
-    if (host === "localhost" || host === "127.0.0.1" || host === "") {
-      return "http://127.0.0.1:8000";
-    }
-  }
-  return process.env.EXPO_PUBLIC_AI_SERVER_URL || "https://sport-wildlife-pipes-acres.trycloudflare.com";
-};
-
-const AI_SERVER_URL = getApiServerUrl();
+import { getAiServerUrl, setAiServerUrl } from "../config/aiServer";
 
 interface DetectedBox {
   id: string;
@@ -116,7 +105,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [customAddress, setCustomAddress] = useState("");
 
-  // Live Camera
+  // Live Camera & AI Connection
+  const [aiServerUrl, setAiServerUrlState] = useState(getAiServerUrl());
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [inputAiUrl, setInputAiUrl] = useState(getAiServerUrl());
+  const [testingAiConn, setTestingAiConn] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [scanning, setScanning] = useState(true);
   const [serverOnline, setServerOnline] = useState(false);
@@ -224,6 +217,20 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     void onLocationResolved(lat, lng, 5, "Dipilih Manual dari Peta", true);
   };
 
+  const checkAiHealth = useCallback(async (targetUrl?: string) => {
+    const url = targetUrl || aiServerUrl;
+    try {
+      const res = await axios.get(`${url}/health`, { timeout: 3500 });
+      if (res.data?.status === "online" && isMountedRef.current) {
+        setServerOnline(true);
+        return true;
+      }
+    } catch {
+      if (isMountedRef.current) setServerOnline(false);
+    }
+    return false;
+  }, [aiServerUrl]);
+
   useEffect(() => {
     isMountedRef.current = true;
     void loadReportsData();
@@ -231,11 +238,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     // Instant location detection on startup
     activateGps(false);
 
-    axios.get(`${AI_SERVER_URL}/health`, { timeout: 2000 })
-      .then((res) => {
-        if (res.data?.status === "online" && isMountedRef.current) setServerOnline(true);
-      })
-      .catch(() => {});
+    void checkAiHealth(aiServerUrl);
 
     if (Platform.OS === "web" && typeof document !== "undefined") {
       if (!document.getElementById("live-laser-styles")) {
@@ -370,7 +373,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         if (ctx) {
           ctx.drawImage(video, 0, 0, 480, 270);
           const base64 = offscreen.toDataURL("image/jpeg", 0.50);
-          const res = await axios.post(`${AI_SERVER_URL}/detect`, { image: base64, confidence: 0.18 }, { timeout: 1500 });
+          const res = await axios.post(`${aiServerUrl}/detect`, { image: base64, confidence: 0.18 }, { timeout: 1500 });
           if (isMountedRef.current && res.data?.detections) {
             setLiveBoxes(res.data.detections);
           }
@@ -501,7 +504,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       } else {
         base64Data = uri;
       }
-      const res = await axios.post(`${AI_SERVER_URL}/detect`, { image: base64Data, confidence: 0.12 }, { timeout: 10000 });
+      const res = await axios.post(`${aiServerUrl}/detect`, { image: base64Data, confidence: 0.12 }, { timeout: 10000 });
       if (isMountedRef.current && res.data?.detections) {
         setPhotoBoxes(res.data.detections);
       }
@@ -651,10 +654,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.aiStatusPill}>
+            <TouchableOpacity
+              style={styles.aiStatusPill}
+              onPress={() => {
+                setInputAiUrl(aiServerUrl);
+                setShowServerModal(true);
+              }}
+              activeOpacity={0.8}
+            >
               <View style={[styles.aiStatusDot, { backgroundColor: serverOnline ? "#10B981" : "#F59E0B" }]} />
-              <Text style={styles.aiStatusText}>{serverOnline ? "AI Active" : "AI Ready"}</Text>
-            </View>
+              <Text style={styles.aiStatusText}>{serverOnline ? "AI Aktif" : "AI Offline"}</Text>
+              <Ionicons name="settings-sharp" size={11} color="#065F46" style={{ marginLeft: 3 }} />
+            </TouchableOpacity>
           </View>
 
           {/* Viewfinder Display Box */}
@@ -1363,6 +1374,101 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowGpsModal(false)}>
                 <Ionicons name="close-circle-outline" size={15} color="#6B7280" />
                 <Text style={[styles.modalSecondaryBtnText, { color: "#6B7280" }]}>Tutup / Nanti Saja</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* AI YOLO Server Configuration Modal */}
+      <Modal visible={showServerModal} transparent animationType="fade" onRequestClose={() => setShowServerModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={[styles.modalIconWrap, { backgroundColor: serverOnline ? "#D1FAE5" : "#FEF3C7" }]}>
+                <Ionicons name={serverOnline ? "hardware-chip" : "cloud-offline"} size={22} color={serverOnline ? "#059669" : "#D97706"} />
+              </View>
+              <View style={{ flex: 1, marginLeft: 10 }}>
+                <Text style={styles.modalTitle}>Pengaturan Server AI YOLO</Text>
+                <Text style={styles.modalSubtitle}>
+                  Status: {serverOnline ? "🟢 Terhubung ke Backend" : "🔴 Terputus / Belum Terhubung"}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowServerModal(false)}>
+                <Ionicons name="close" size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <Text style={styles.modalStepTitle}>🌐 URL Backend AI Aktif:</Text>
+              <TextInput
+                style={styles.serverInput}
+                value={inputAiUrl}
+                onChangeText={setInputAiUrl}
+                placeholder="https://xxxx.trycloudflare.com atau http://127.0.0.1:8000"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+
+              <Text style={{ fontSize: 11, color: "#4B5563", marginTop: 8, lineHeight: 16 }}>
+                💡 <Text style={{ fontWeight: "700" }}>Akses dari GitHub Pages / HP:</Text> Browser HTTPS memblokir HTTP biasa. Gunakan URL HTTPS Cloudflare Tunnel aktif laptop Anda.
+              </Text>
+
+              <View style={{ marginTop: 10, gap: 6 }}>
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => setInputAiUrl("https://absent-driving-someone-rural.trycloudflare.com")}
+                >
+                  <Ionicons name="flash-outline" size={13} color="#059669" />
+                  <Text style={styles.presetBtnText}>Gunakan Cloudflare Tunnel Aktif</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.presetBtn}
+                  onPress={() => setInputAiUrl("http://127.0.0.1:8000")}
+                >
+                  <Ionicons name="laptop-outline" size={13} color="#3B82F6" />
+                  <Text style={[styles.presetBtnText, { color: "#1D4ED8" }]}>Gunakan Localhost (127.0.0.1:8000)</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalPrimaryBtn}
+                disabled={testingAiConn}
+                onPress={async () => {
+                  setTestingAiConn(true);
+                  const cleaned = inputAiUrl.trim().replace(/\/+$/, "");
+                  setAiServerUrl(cleaned);
+                  setAiServerUrlState(cleaned);
+                  const isOk = await checkAiHealth(cleaned);
+                  setTestingAiConn(false);
+                  if (isOk) {
+                    Alert.alert("✅ Terhubung!", `Berhasil terhubung ke server AI di: ${cleaned}`);
+                    setShowServerModal(false);
+                  } else {
+                    Alert.alert(
+                      "⚠️ Tidak Dapat Terhubung",
+                      `Gagal menghubungi ${cleaned}/health. Pastikan server AI dan Cloudflare Tunnel sedang berjalan di laptop Anda.`
+                    );
+                  }
+                }}
+              >
+                {testingAiConn ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle" size={15} color="#FFF" />
+                    <Text style={styles.modalPrimaryBtnText}>Simpan & Tes Koneksi</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowServerModal(false)}>
+                <Ionicons name="close-circle-outline" size={15} color="#6B7280" />
+                <Text style={[styles.modalSecondaryBtnText, { color: "#6B7280" }]}>Tutup</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -2093,6 +2199,33 @@ const styles = StyleSheet.create({
   modalSecondaryBtnText: {
     fontSize: 11.5,
     fontWeight: "700",
+    color: "#065F46",
+  },
+  serverInput: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+    borderRadius: radius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    fontSize: 12,
+    color: "#111827",
+    fontFamily: Platform.OS === "web" ? "monospace" : undefined,
+  },
+  presetBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#F3F4F6",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  presetBtnText: {
+    fontSize: 11,
+    fontWeight: "600",
     color: "#065F46",
   },
 });

@@ -26,7 +26,9 @@ import FadeInView from "../components/FadeInView";
 import { colors, radius, shadow, spacing } from "../theme";
 import type { RootStackParamList } from "../navigation/types";
 
-const LOCAL_YOLO_URL = "http://127.0.0.1:8000";
+import { getAiServerUrl } from "../config/aiServer";
+
+const LOCAL_YOLO_URL = getAiServerUrl();
 
 interface DetectedBox {
   id: string;
