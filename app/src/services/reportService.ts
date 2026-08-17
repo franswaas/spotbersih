@@ -56,7 +56,6 @@ export function getLocalReports(): Report[] {
  * Queries the shared backend database while maintaining local offline mirror
  */
 export async function getReports(userEmail?: string): Promise<Report[]> {
-  const local = getLocalReports();
   const serverUrl = getAiServerUrl();
 
   try {
@@ -64,26 +63,17 @@ export async function getReports(userEmail?: string): Promise<Report[]> {
     if (res.data?.status === "success" && Array.isArray(res.data?.reports)) {
       const serverReports: Report[] = res.data.reports;
 
-      // Merge backend reports with local reports
-      const map = new Map<string, Report>();
-      local.forEach((r) => map.set(r.id, r));
-      serverReports.forEach((r) => map.set(r.id, r));
-
-      const merged = Array.from(map.values()).sort(
-        (a, b) => new Date(b.created_at || "").getTime() - new Date(a.created_at || "").getTime()
-      );
-
-      // Sync local storage mirror
+      // Authoritative update: server list is the single source of truth
       if (Platform.OS === "web" && typeof window !== "undefined" && window.localStorage) {
-        window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged.slice(0, 100)));
+        window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serverReports.slice(0, 200)));
       }
-      return merged;
+      return serverReports;
     }
   } catch (e) {
     // Backend offline or unreachable, fallback to local storage
   }
 
-  return local;
+  return getLocalReports();
 }
 
 /**

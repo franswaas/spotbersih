@@ -105,6 +105,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [customAddress, setCustomAddress] = useState("");
+  const [previewReport, setPreviewReport] = useState<Report | null>(null);
 
   // Live Camera & AI Connection
   const [aiServerUrl, setAiServerUrlState] = useState(getAiServerUrl());
@@ -1015,9 +1016,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.paneCardRight}>
           <WasteDistributionMap
             reports={reports}
-            height={180}
+            height={260}
             userLocation={gpsLocation}
             onCoordinateSelect={handleManualCoordinateSelect}
+            onSelectReport={(selected) => setPreviewReport(selected)}
             title="🗺️ Peta Sebaran Sampah Warga"
             subtitle="Pantau titik laporan secara real-time & bersihkan bersama."
           />
@@ -1028,7 +1030,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               <Ionicons name="people" size={16} color="#065F46" />
               <Text style={styles.commActionTitle}>Laporan Sekitar ({reports.length})</Text>
             </View>
-            <Text style={styles.commActionSub}>Hapus jika sampah telah bersih:</Text>
+            <Text style={styles.commActionSub}>Klik foto untuk perbesar / bersihkan:</Text>
           </View>
 
           <ScrollView style={styles.activeReportsScroll} showsVerticalScrollIndicator={true}>
@@ -1042,8 +1044,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               </View>
             ) : (
               reports.map((item) => (
-                <View key={item.id} style={styles.reportRowCard}>
-                  <Image source={{ uri: item.original_image_url }} style={styles.reportThumb} />
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.reportRowCard}
+                  activeOpacity={0.85}
+                  onPress={() => setPreviewReport(item)}
+                >
+                  <View style={styles.reportThumbWrap}>
+                    <Image source={{ uri: item.original_image_url }} style={styles.reportThumb} resizeMode="cover" />
+                    <View style={styles.thumbZoomIcon}>
+                      <Ionicons name="scan-outline" size={12} color="#FFFFFF" />
+                    </View>
+                  </View>
                   <View style={styles.reportInfo}>
                     <View style={styles.reportIdRow}>
                       <Text style={styles.reportIdText}>#{item.display_id}</Text>
@@ -1051,7 +1063,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                         <Text style={styles.itemCountText}>{item.garbage_count} Sampah</Text>
                       </View>
                     </View>
-                    <Text style={styles.reportAddress} numberOfLines={1}>
+                    <Text style={styles.reportAddress} numberOfLines={2}>
                       📍 {item.address || `${item.latitude}, ${item.longitude}`}
                     </Text>
                   </View>
@@ -1059,13 +1071,16 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   {/* 1-Click Cleaned Delete Button */}
                   <TouchableOpacity
                     style={styles.cleanResolvedBtn}
-                    onPress={() => handleDeleteReport(item.id)}
+                    onPress={(e) => {
+                      (e as any)?.stopPropagation?.();
+                      handleDeleteReport(item.id);
+                    }}
                     activeOpacity={0.8}
                   >
                     <Ionicons name="sparkles" size={13} color="#059669" />
                     <Text style={styles.cleanResolvedBtnText}>Sudah Bersih</Text>
                   </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
               ))
             )}
           </ScrollView>
@@ -1316,21 +1331,33 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             {/* Waste Distribution Map in Riwayat */}
             <WasteDistributionMap
               reports={reports}
-              height={320}
+              height={400}
               userLocation={gpsLocation}
               onCoordinateSelect={handleManualCoordinateSelect}
+              onSelectReport={(selected) => setPreviewReport(selected)}
               title="🗺️ Peta Interaktif Sebaran Sampah Warga"
               subtitle="Pantau persebaran lokasi sampah yang telah dilaporkan warga di sekitar Anda."
             />
 
             <View style={{ marginTop: spacing.md }}>
-              <Text style={{ fontSize: 13.5, fontWeight: "800", color: "#111827", marginBottom: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: "800", color: "#111827", marginBottom: 8 }}>
                 Daftar Arsip Foto & Detail Laporan ({reports.length}):
               </Text>
               <View style={styles.historyGrid}>
                 {reports.map((item) => (
                   <View key={item.id} style={[styles.historyCard, isMobile && { width: "100%" }]}>
-                    <Image source={{ uri: item.original_image_url }} style={styles.historyImg} />
+                    <TouchableOpacity
+                      activeOpacity={0.9}
+                      onPress={() => setPreviewReport(item)}
+                      style={styles.historyImgWrap}
+                    >
+                      <Image source={{ uri: item.original_image_url }} style={styles.historyImg} resizeMode="cover" />
+                      <View style={styles.zoomOverlayBadge}>
+                        <Ionicons name="scan-outline" size={14} color="#FFFFFF" />
+                        <Text style={styles.zoomOverlayText}>🔍 Klik untuk Perbesar</Text>
+                      </View>
+                    </TouchableOpacity>
+
                     <View style={styles.historyBody}>
                       <View style={styles.historyCardTop}>
                         <Text style={styles.historyCardId}>#{item.display_id}</Text>
@@ -1338,8 +1365,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                           <Text style={styles.historyCardChipText}>{item.garbage_count} Sampah</Text>
                         </View>
                       </View>
-                      <Text style={styles.historyCardAddr} numberOfLines={1}>
+                      <Text style={styles.historyCardAddr} numberOfLines={2}>
                         📍 {item.address || `${item.latitude}, ${item.longitude}`}
+                      </Text>
+                      <Text style={styles.historyCardTime}>
+                        🕒 {item.created_at ? new Date(item.created_at).toLocaleString("id-ID") : "Baru saja"}
                       </Text>
 
                       <TouchableOpacity
@@ -1915,15 +1945,29 @@ const styles = StyleSheet.create({
     backgroundColor: "#F8FAFC",
     padding: 6,
     borderRadius: radius.sm,
-    marginBottom: 4,
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  reportThumb: {
-    width: 40,
-    height: 40,
+  reportThumbWrap: {
+    position: "relative",
+    width: 56,
+    height: 56,
     borderRadius: radius.sm,
-    backgroundColor: "#E2E8F0",
+    overflow: "hidden",
+    backgroundColor: "#0F172A",
+  },
+  reportThumb: {
+    width: "100%",
+    height: "100%",
+  },
+  thumbZoomIcon: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 3,
+    padding: 2,
   },
   reportInfo: {
     flex: 1,
@@ -1961,7 +2005,7 @@ const styles = StyleSheet.create({
     gap: 3,
     backgroundColor: "#ECFDF5",
     paddingHorizontal: 7,
-    paddingVertical: 4,
+    paddingVertical: 6,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: "#A7F3D0",
@@ -2112,19 +2156,41 @@ const styles = StyleSheet.create({
   historyCard: {
     width: "48%",
     backgroundColor: "#FFFFFF",
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     overflow: "hidden",
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#E2E8F0",
     ...shadow.card,
   },
+  historyImgWrap: {
+    position: "relative",
+    width: "100%",
+    height: 230,
+    backgroundColor: "#0F172A",
+  },
   historyImg: {
     width: "100%",
-    height: 120,
-    backgroundColor: "#0B0F19",
+    height: "100%",
+  },
+  zoomOverlayBadge: {
+    position: "absolute",
+    bottom: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  zoomOverlayText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
   },
   historyBody: {
-    padding: 8,
+    padding: 10,
   },
   historyCardTop: {
     flexDirection: "row",
@@ -2132,25 +2198,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   historyCardId: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: "800",
     color: "#111827",
   },
   historyCardChip: {
     backgroundColor: "#FEE2E2",
-    paddingHorizontal: 5,
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 3,
+    borderRadius: 4,
   },
   historyCardChipText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: "700",
     color: "#991B1B",
   },
   historyCardAddr: {
-    fontSize: 10.5,
-    color: "#6B7280",
-    marginVertical: 4,
+    fontSize: 11,
+    color: "#4B5563",
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  historyCardTime: {
+    fontSize: 10,
+    color: "#9CA3AF",
+    marginTop: 3,
   },
   historyDeleteBtn: {
     flexDirection: "row",
@@ -2158,16 +2230,91 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 4,
     backgroundColor: "#ECFDF5",
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: "#A7F3D0",
-    marginTop: 4,
+    marginTop: 8,
   },
   historyDeleteBtnText: {
     fontSize: 11,
     fontWeight: "700",
     color: "#065F46",
+  },
+  lightboxOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.85)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.md,
+  },
+  lightboxCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: radius.lg,
+    maxWidth: 720,
+    width: "100%",
+    maxHeight: "92%",
+    overflow: "hidden",
+    ...shadow.card,
+  },
+  lightboxHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  lightboxTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#111827",
+  },
+  lightboxAddress: {
+    fontSize: 11.5,
+    color: "#4B5563",
+    marginTop: 2,
+  },
+  lightboxCloseBtn: {
+    padding: 4,
+  },
+  lightboxImgContainer: {
+    width: "100%",
+    height: 380,
+    backgroundColor: "#0B0F19",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  lightboxImg: {
+    width: "100%",
+    height: "100%",
+  },
+  lightboxFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+    gap: 8,
+  },
+  lightboxFooterText: {
+    fontSize: 10.5,
+    color: "#6B7280",
+    flex: 1,
+  },
+  lightboxDeleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
   },
   modalOverlay: {
     flex: 1,

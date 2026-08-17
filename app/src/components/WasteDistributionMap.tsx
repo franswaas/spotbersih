@@ -30,13 +30,16 @@ export default function WasteDistributionMap({
     const handler = (ev: MessageEvent) => {
       if (ev.data?.type === "SPOTBERSIH_MANUAL_PIN" && onCoordinateSelect) {
         onCoordinateSelect(ev.data.lat, ev.data.lng);
+      } else if (ev.data?.type === "SPOTBERSIH_PREVIEW_REPORT" && onSelectReport) {
+        const report = reports.find(r => r.id === ev.data.id);
+        if (report) onSelectReport(report);
       }
     };
     if (typeof window !== "undefined") {
       window.addEventListener("message", handler);
       return () => window.removeEventListener("message", handler);
     }
-  }, [onCoordinateSelect]);
+  }, [onCoordinateSelect, onSelectReport, reports]);
 
   // Filter reports that have valid numeric coordinates
   const mappedReports = useMemo(
@@ -132,20 +135,40 @@ export default function WasteDistributionMap({
             border-radius: 12px;
             padding: 0;
             overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.25);
           }
           .leaflet-popup-content {
             margin: 0;
             line-height: 1.4;
           }
           .popup-card {
-            width: 220px;
+            width: 290px;
+          }
+          .popup-img-wrap {
+            position: relative;
+            width: 100%;
+            height: 175px;
+            background: #0F172A;
+            cursor: pointer;
           }
           .popup-img {
             width: 100%;
-            height: 110px;
+            height: 100%;
             object-fit: cover;
-            background: #111827;
+            display: block;
+          }
+          .popup-zoom-hint {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #FFFFFF;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
           }
           .popup-body {
             padding: 10px 12px 12px;
@@ -154,12 +177,12 @@ export default function WasteDistributionMap({
             font-size: 13px;
             font-weight: 800;
             color: #111827;
-            margin: 0 0 2px;
+            margin: 0;
           }
           .popup-address {
             font-size: 11px;
             color: #4B5563;
-            margin: 0 0 6px;
+            margin: 4px 0 2px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -171,7 +194,7 @@ export default function WasteDistributionMap({
             font-size: 10px;
             font-weight: 700;
             padding: 2px 6px;
-            borderRadius: 4px;
+            border-radius: 4px;
           }
           .gps-center-btn {
             position: absolute;
@@ -199,41 +222,39 @@ export default function WasteDistributionMap({
       <body>
         <div id="map"></div>
         <script>
-          var reports = ${markersJson};
           var userPos = ${userPosJson};
-          var defaultCenter = [${centerLat}, ${centerLng}];
-          var map = L.map('map', { zoomControl: true }).setView(defaultCenter, ${initZoom});
+          var reports = ${markersJson};
+
+          var map = L.map('map', {
+            zoomControl: true,
+            attributionControl: false
+          }).setView([${centerLat}, ${centerLng}], ${initZoom});
 
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
+            maxZoom: 19
           }).addTo(map);
 
           var group = [];
 
-          // 1. Render User Current Location Pin if GPS Active
+          // 1. Render User GPS Pin
           if (userPos && userPos.lat && userPos.lng) {
-            var userPinHtml = '<div class="user-pin">🔵 Posisi Anda</div>';
             var userIcon = L.divIcon({
-              className: 'leaflet-user-marker',
-              html: userPinHtml,
+              className: 'leaflet-data-marker',
+              html: '<div class="user-pin">🔵 Posisi Anda</div>',
               iconSize: [100, 28],
               iconAnchor: [50, 14]
             });
 
-            var userMarker = L.marker([userPos.lat, userPos.lng], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
-            userMarker.bindPopup('<div style="padding: 10px; font-size: 12px; font-weight: 700; color: #1E40AF;">📍 Posisi Perangkat Anda (Saat Ini)</div>');
+            L.marker([userPos.lat, userPos.lng], { icon: userIcon }).addTo(map);
             group.push([userPos.lat, userPos.lng]);
 
-            // Subtle radius ring around user
             L.circle([userPos.lat, userPos.lng], {
               color: '#2563EB',
               fillColor: '#3B82F6',
               fillOpacity: 0.12,
-              radius: 200
+              radius: Math.max(userPos.accuracy || 15, 20)
             }).addTo(map);
 
-            // Add floating button to center to user
             var btn = document.createElement('button');
             btn.className = 'gps-center-btn';
             btn.innerHTML = '🎯 Ke Posisi Saya';
@@ -258,11 +279,14 @@ export default function WasteDistributionMap({
               group.push([r.lat, r.lng]);
 
               var popupContent = '<div class="popup-card">' +
-                (r.image ? '<img src="' + r.image + '" class="popup-img" />' : '') +
+                (r.image ? '<div class="popup-img-wrap" onclick="try{window.parent.postMessage({type:\\'SPOTBERSIH_PREVIEW_REPORT\\', id:\\'' + r.id + '\\'}, \\'*\\')}catch(e){}"><img src="' + r.image + '" class="popup-img" /><div class="popup-zoom-hint">🔍 Klik untuk Perbesar</div></div>' : '') +
                 '<div class="popup-body">' +
-                  '<div class="popup-title">Laporan #' + r.display_id + '</div>' +
+                  '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
+                    '<div class="popup-title">Laporan #' + r.display_id + '</div>' +
+                    '<span class="popup-count">' + (r.count > 0 ? r.count + ' Sampah' : 'Area Bersih') + '</span>' +
+                  '</div>' +
                   '<div class="popup-address">📍 ' + r.address + '</div>' +
-                  '<span class="popup-count">' + (r.count > 0 ? r.count + ' Sampah Terdeteksi' : 'Area Bersih') + '</span>' +
+                  (r.items ? '<div style="font-size:10.5px; color:#059669; font-weight:700; margin-top:2px;">Terdeteksi: ' + r.items + '</div>' : '') +
                 '</div>' +
               '</div>';
 
