@@ -1032,74 +1032,79 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.paneCardRight}>
           <WasteDistributionMap
             reports={reports}
-            height={isMobile ? 260 : 420}
+            height={isMobile ? 260 : 380}
             userLocation={gpsLocation}
             onCoordinateSelect={handleManualCoordinateSelect}
             onSelectReport={(selected) => setPreviewReport(selected)}
             title="🗺️ Peta Sebaran Sampah Warga"
             subtitle="Pantau titik laporan secara real-time & bersihkan bersama."
+            hideEmptyNote={true}
           />
 
-          {/* Active Reports List & Quick Clean Action */}
-          <View style={styles.communityActionHeader}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-              <Ionicons name="people" size={16} color="#065F46" />
-              <Text style={styles.commActionTitle}>Laporan Sekitar ({reports.length})</Text>
-            </View>
-            <Text style={styles.commActionSub}>Klik foto untuk perbesar / bersihkan:</Text>
-          </View>
-
-          <ScrollView style={styles.activeReportsScroll} showsVerticalScrollIndicator={true}>
-            {reports.length === 0 ? (
-              <View style={styles.emptyReportsBox}>
-                <Ionicons name="checkmark-circle-outline" size={38} color="#10B981" />
-                <Text style={styles.emptyReportsTitle}>Semua Lokasi Bersih!</Text>
+          {/* Active Reports List or Clean Confirmation Banner */}
+          {reports.length === 0 ? (
+            <View style={styles.emptyReportsBox}>
+              <Ionicons name="checkmark-circle" size={24} color="#10B981" />
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.emptyReportsTitle}>✨ Semua Lokasi Bersih & Asri</Text>
                 <Text style={styles.emptyReportsDesc}>
-                  Tidak ada titik sampah aktif. Lingkungan saat ini bersih dan asri.
+                  Belum ada laporan sampah aktif di sekitar Anda. Lingkungan terjaga dengan baik.
                 </Text>
               </View>
-            ) : (
-              reports.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.reportRowCard}
-                  activeOpacity={0.85}
-                  onPress={() => setPreviewReport(item)}
-                >
-                  <View style={styles.reportThumbWrap}>
-                    <Image source={{ uri: item.original_image_url }} style={styles.reportThumb} resizeMode="cover" />
-                    <View style={styles.thumbZoomIcon}>
-                      <Ionicons name="scan-outline" size={12} color="#FFFFFF" />
-                    </View>
-                  </View>
-                  <View style={styles.reportInfo}>
-                    <View style={styles.reportIdRow}>
-                      <Text style={styles.reportIdText}>#{item.display_id}</Text>
-                      <View style={styles.itemCountBadge}>
-                        <Text style={styles.itemCountText}>{item.garbage_count} Sampah</Text>
+            </View>
+          ) : (
+            <View style={{ marginTop: 8 }}>
+              <View style={styles.communityActionHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                  <Ionicons name="people" size={16} color="#065F46" />
+                  <Text style={styles.commActionTitle}>Laporan Sekitar ({reports.length})</Text>
+                </View>
+                <Text style={styles.commActionSub}>Klik foto untuk perbesar / bersihkan:</Text>
+              </View>
+
+              <ScrollView style={styles.activeReportsScroll} showsVerticalScrollIndicator={true}>
+                {reports.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.reportRowCard}
+                    activeOpacity={0.85}
+                    onPress={() => setPreviewReport(item)}
+                  >
+                    <View style={styles.reportThumbWrap}>
+                      <Image source={{ uri: item.original_image_url }} style={styles.reportThumb} resizeMode="cover" />
+                      <View style={styles.thumbZoomIcon}>
+                        <Ionicons name="scan-outline" size={12} color="#FFFFFF" />
                       </View>
                     </View>
-                    <Text style={styles.reportAddress} numberOfLines={2}>
-                      📍 {item.address || `${item.latitude}, ${item.longitude}`}
-                    </Text>
-                  </View>
+                    <View style={styles.reportInfo}>
+                      <View style={styles.reportIdRow}>
+                        <Text style={styles.reportIdText}>#{item.display_id}</Text>
+                        <View style={styles.itemCountBadge}>
+                          <Text style={styles.itemCountText}>{item.garbage_count} Sampah</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.reportAddress} numberOfLines={2}>
+                        📍 {item.address || `${item.latitude}, ${item.longitude}`}
+                      </Text>
+                    </View>
 
-                  {/* 1-Click Cleaned Delete Button */}
-                  <TouchableOpacity
-                    style={styles.cleanResolvedBtn}
-                    onPress={(e) => {
-                      (e as any)?.stopPropagation?.();
-                      handleDeleteReport(item.id);
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="sparkles" size={13} color="#059669" />
-                    <Text style={styles.cleanResolvedBtnText}>Sudah Bersih</Text>
+                    {/* 1-Click Cleaned Delete Button */}
+                    <TouchableOpacity
+                      style={styles.cleanResolvedBtn}
+                      onPress={(e) => {
+                        (e as any)?.stopPropagation?.();
+                        handleDeleteReport(item.id);
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="sparkles" size={13} color="#059669" />
+                      <Text style={styles.cleanResolvedBtnText}>Sudah Bersih</Text>
+                    </TouchableOpacity>
                   </TouchableOpacity>
-                </TouchableOpacity>
-              ))
-            )}
-          </ScrollView>
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
       </View>
     </>
@@ -2030,27 +2035,25 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   emptyReportsBox: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
-    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     backgroundColor: "#F0FDF4",
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: "#DCFCE7",
-    marginTop: 4,
+    borderColor: "#BBF7D0",
+    marginTop: 8,
   },
   emptyReportsTitle: {
     fontSize: 12.5,
     fontWeight: "800",
     color: "#065F46",
-    marginTop: 3,
   },
   emptyReportsDesc: {
     fontSize: 11,
     color: "#047857",
-    textAlign: "center",
-    marginTop: 2,
+    marginTop: 1,
   },
   reportRowCard: {
     flexDirection: "row",

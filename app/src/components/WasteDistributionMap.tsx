@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StyleProp, ViewStyle } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { Report } from "../types/report";
@@ -13,6 +13,8 @@ interface WasteDistributionMapProps {
   height?: number;
   userLocation?: { lat: number; lng: number } | null;
   onCoordinateSelect?: (lat: number, lng: number) => void;
+  containerStyle?: StyleProp<ViewStyle>;
+  hideEmptyNote?: boolean;
 }
 
 export default function WasteDistributionMap({
@@ -23,6 +25,8 @@ export default function WasteDistributionMap({
   height = 220,
   userLocation,
   onCoordinateSelect,
+  containerStyle,
+  hideEmptyNote,
 }: WasteDistributionMapProps) {
   const userPos = userLocation || null;
 
@@ -377,7 +381,7 @@ export default function WasteDistributionMap({
         </View>
       </View>
 
-      {mappedReports.length === 0 && (
+      {!hideEmptyNote && mappedReports.length === 0 && (
         <View style={styles.emptyNote}>
           <Ionicons name="sparkles" size={16} color="#059669" />
           <Text style={styles.emptyNoteText}>
@@ -391,14 +395,11 @@ export default function WasteDistributionMap({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.white,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadow.card,
+    backgroundColor: "transparent",
+    borderRadius: radius.md,
+    padding: 0,
+    marginTop: 0,
+    marginBottom: 0,
   },
   headerRow: {
     flexDirection: "row",
