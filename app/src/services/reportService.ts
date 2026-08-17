@@ -59,7 +59,14 @@ export async function getReports(userEmail?: string): Promise<Report[]> {
   const serverUrl = getAiServerUrl();
 
   try {
-    const res = await axios.get(`${serverUrl}/reports`, { timeout: 3500 });
+    const res = await axios.get(`${serverUrl}/reports?_t=${Date.now()}`, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+      },
+      timeout: 3500,
+    });
     if (res.data?.status === "success" && Array.isArray(res.data?.reports)) {
       const serverReports: Report[] = res.data.reports;
 

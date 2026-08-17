@@ -41,6 +41,11 @@ jobs:
         working-directory: app
         run: npm run typecheck
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Build & Export Web Bundle
         working-directory: app
         env:
@@ -49,7 +54,7 @@ jobs:
 
       - name: Fix Assets & Inject Icon Fonts
         working-directory: app
-        run: python fix_paths.py
+        run: python3 fix_paths.py || python fix_paths.py
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v4

@@ -350,7 +350,8 @@ export default function WasteDistributionMap({
             srcDoc={mapHtml}
             style={{
               width: "100%",
-              height: "100%",
+              height: `${height}px`,
+              minHeight: `${height}px`,
               border: "none",
               display: "block",
             }}
@@ -470,7 +471,6 @@ const styles = StyleSheet.create({
   },
   mapWindow: {
     width: "100%",
-    height: 350,
     borderRadius: radius.md,
     overflow: "hidden",
     backgroundColor: "#E5E7EB",
