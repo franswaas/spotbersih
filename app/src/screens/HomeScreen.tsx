@@ -437,8 +437,11 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
     setLiveSubmitting(true);
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    const srcW = video.videoWidth || 1280;
+    const srcH = video.videoHeight || 720;
+    const scale = Math.min(1, 960 / srcW);
+    canvas.width = Math.round(srcW * scale);
+    canvas.height = Math.round(srcH * scale);
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -448,23 +451,23 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         const bw = (box.width / 100) * canvas.width;
         const bh = (box.height / 100) * canvas.height;
         ctx.strokeStyle = box.color || "#10B981";
-        ctx.lineWidth = Math.max(4, Math.round(canvas.width * 0.0035));
+        ctx.lineWidth = Math.max(3.5, Math.round(canvas.width * 0.004));
         ctx.strokeRect(bx, by, bw, bh);
 
         const tagText = `${box.label} [${box.confidence}%]`;
-        const fontSize = Math.max(14, Math.round(canvas.width * 0.015));
+        const fontSize = Math.max(13, Math.round(canvas.width * 0.018));
         ctx.font = `bold ${fontSize}px sans-serif`;
         const textMetrics = ctx.measureText(tagText);
-        const tagW = textMetrics.width + 16;
-        const tagH = fontSize + 10;
+        const tagW = textMetrics.width + 14;
+        const tagH = fontSize + 8;
         const tagY = by < tagH + 6 ? by + 4 : by - tagH - 4;
         ctx.fillStyle = box.color || "#10B981";
         ctx.fillRect(bx, tagY, tagW, tagH);
         ctx.fillStyle = "#FFFFFF";
-        ctx.fillText(tagText, bx + 8, tagY + fontSize + 1);
+        ctx.fillText(tagText, bx + 6, tagY + fontSize - 1);
       });
     }
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.76);
     const lat = gpsLocation.lat;
     const lng = gpsLocation.lng;
     const resolvedAddress = customAddress.trim() || `Live Scan (${lat}, ${lng})`;
@@ -563,14 +566,24 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     setPhotoSubmitting(true);
 
     let finalImg = imageUri;
-    if (Platform.OS === "web" && photoBoxes.length > 0) {
+    if (Platform.OS === "web") {
       try {
         const imgEl = new (window as any).Image();
+        imgEl.crossOrigin = "anonymous";
         imgEl.src = imageUri;
-        await new Promise((r) => { if (imgEl.complete) r(true); else imgEl.onload = () => r(true); });
+        await new Promise((r) => {
+          if (imgEl.complete) r(true);
+          else {
+            imgEl.onload = () => r(true);
+            imgEl.onerror = () => r(true);
+          }
+        });
         const canvas = document.createElement("canvas");
-        canvas.width = imgEl.naturalWidth || 1280;
-        canvas.height = imgEl.naturalHeight || 720;
+        const srcW = imgEl.naturalWidth || imgEl.width || 1280;
+        const srcH = imgEl.naturalHeight || imgEl.height || 720;
+        const scale = Math.min(1, 960 / srcW);
+        canvas.width = Math.round(srcW * scale);
+        canvas.height = Math.round(srcH * scale);
         const ctx = canvas.getContext("2d");
         if (ctx) {
           ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
@@ -580,23 +593,26 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
             const bw = (box.width / 100) * canvas.width;
             const bh = (box.height / 100) * canvas.height;
             ctx.strokeStyle = box.color || "#10B981";
-            ctx.lineWidth = Math.max(4, Math.round(canvas.width * 0.0035));
+            ctx.lineWidth = Math.max(3.5, Math.round(canvas.width * 0.004));
             ctx.strokeRect(bx, by, bw, bh);
+
             const tagText = `${box.label} [${box.confidence}%]`;
-            const fontSize = Math.max(14, Math.round(canvas.width * 0.015));
+            const fontSize = Math.max(13, Math.round(canvas.width * 0.018));
             ctx.font = `bold ${fontSize}px sans-serif`;
             const textMetrics = ctx.measureText(tagText);
-            const tagW = textMetrics.width + 16;
-            const tagH = fontSize + 10;
+            const tagW = textMetrics.width + 14;
+            const tagH = fontSize + 8;
             const tagY = by < tagH + 6 ? by + 4 : by - tagH - 4;
             ctx.fillStyle = box.color || "#10B981";
             ctx.fillRect(bx, tagY, tagW, tagH);
             ctx.fillStyle = "#FFFFFF";
-            ctx.fillText(tagText, bx + 8, tagY + fontSize + 1);
+            ctx.fillText(tagText, bx + 6, tagY + fontSize - 1);
           });
-          finalImg = canvas.toDataURL("image/jpeg", 0.88);
+          finalImg = canvas.toDataURL("image/jpeg", 0.76);
         }
-      } catch {}
+      } catch (err) {
+        console.warn("Photo canvas draw error:", err);
+      }
     }
 
     const lat = gpsLocation.lat;
@@ -1563,6 +1579,99 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
           </View>
         </View>
       </Modal>
+
+      {/* ================= LIGHTBOX IMAGE PREVIEW MODAL ================= */}
+      <Modal
+        visible={previewReport !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewReport(null)}
+      >
+        <View style={styles.lightboxOverlay}>
+          <TouchableOpacity
+            style={styles.lightboxBackdrop}
+            activeOpacity={1}
+            onPress={() => setPreviewReport(null)}
+          />
+          {previewReport && (
+            <View style={[styles.lightboxCard, isMobile && { width: "96%", maxHeight: "94%" }]}>
+              {/* Lightbox Header */}
+              <View style={styles.lightboxHeader}>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Text style={styles.lightboxId}>Laporan #{previewReport.display_id}</Text>
+                    <View style={styles.lightboxChip}>
+                      <Text style={styles.lightboxChipText}>{previewReport.garbage_count} Sampah</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.lightboxSub} numberOfLines={1}>
+                    📍 {previewReport.address || `${previewReport.latitude}, ${previewReport.longitude}`}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.lightboxCloseBtn}
+                  onPress={() => setPreviewReport(null)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="close" size={24} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Lightbox Image Stage with Full Resolution */}
+              <View style={styles.lightboxImgContainer}>
+                <Image
+                  source={{ uri: previewReport.original_image_url }}
+                  style={styles.lightboxFullImg}
+                  resizeMode="contain"
+                />
+              </View>
+
+              {/* Detected Items Tag Pills */}
+              {previewReport.detected_items && previewReport.detected_items.length > 0 && (
+                <View style={styles.lightboxTagsWrap}>
+                  <Text style={styles.lightboxTagsLabel}>Objek Terdeteksi AI:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+                    {previewReport.detected_items.map((it, idx) => (
+                      <View key={idx} style={[styles.lightboxTagItem, { borderColor: it.color || "#10B981" }]}>
+                        <View style={[styles.miniDot, { backgroundColor: it.color || "#10B981" }]} />
+                        <Text style={styles.lightboxTagText}>
+                          {it.label} ({Math.round(it.confidence * 100)}%)
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Lightbox Actions */}
+              <View style={styles.lightboxActions}>
+                <TouchableOpacity
+                  style={styles.lightboxCleanBtn}
+                  onPress={async () => {
+                    const id = previewReport.id;
+                    setPreviewReport(null);
+                    await handleDeleteReport(id);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                  <Text style={styles.lightboxCleanBtnText}>🧹 Tandai Bersih & Hapus Laporan</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.lightboxDismissBtn}
+                  onPress={() => setPreviewReport(null)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="close-circle-outline" size={16} color="#94A3B8" />
+                  <Text style={styles.lightboxDismissBtnText}>Tutup</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -2243,78 +2352,156 @@ const styles = StyleSheet.create({
   },
   lightboxOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.85)",
-    alignItems: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.88)",
     justifyContent: "center",
+    alignItems: "center",
     padding: spacing.md,
+    position: "relative",
+  },
+  lightboxBackdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   lightboxCard: {
-    backgroundColor: "#FFFFFF",
+    width: "90%",
+    maxWidth: 760,
+    maxHeight: "90%",
+    backgroundColor: "#1E293B",
     borderRadius: radius.lg,
-    maxWidth: 720,
-    width: "100%",
-    maxHeight: "92%",
     overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#334155",
     ...shadow.card,
+    display: "flex",
+    flexDirection: "column",
+    zIndex: 10,
   },
   lightboxHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.md,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
+    borderBottomColor: "#334155",
+    backgroundColor: "#0F172A",
   },
-  lightboxTitle: {
-    fontSize: 15,
+  lightboxId: {
+    fontSize: 16,
     fontWeight: "800",
-    color: "#111827",
+    color: "#FFFFFF",
   },
-  lightboxAddress: {
-    fontSize: 11.5,
-    color: "#4B5563",
+  lightboxChip: {
+    backgroundColor: "rgba(239, 68, 68, 0.2)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: "#EF4444",
+  },
+  lightboxChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#FCA5A5",
+  },
+  lightboxSub: {
+    fontSize: 12,
+    color: "#94A3B8",
     marginTop: 2,
   },
   lightboxCloseBtn: {
-    padding: 4,
-  },
-  lightboxImgContainer: {
-    width: "100%",
-    height: 380,
-    backgroundColor: "#0B0F19",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
     alignItems: "center",
     justifyContent: "center",
   },
-  lightboxImg: {
+  lightboxImgContainer: {
+    flex: 1,
+    minHeight: 320,
+    maxHeight: 460,
+    backgroundColor: "#020617",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  lightboxFullImg: {
     width: "100%",
     height: "100%",
   },
-  lightboxFooter: {
+  lightboxTagsWrap: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: "#0F172A",
+    borderTopWidth: 1,
+    borderTopColor: "#334155",
+  },
+  lightboxTagsLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#94A3B8",
+    marginBottom: 6,
+  },
+  lightboxTagItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "#1E293B",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  lightboxTagText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#E2E8F0",
+  },
+  lightboxActions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    backgroundColor: "#0F172A",
     borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    backgroundColor: "#F9FAFB",
-    gap: 8,
+    borderTopColor: "#334155",
+    gap: 10,
   },
-  lightboxFooterText: {
-    fontSize: 10.5,
-    color: "#6B7280",
+  lightboxCleanBtn: {
     flex: 1,
-  },
-  lightboxDeleteBtn: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#059669",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: radius.md,
+  },
+  lightboxCleanBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+  lightboxDismissBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 4,
-    backgroundColor: "#ECFDF5",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: "#A7F3D0",
+    backgroundColor: "#334155",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: radius.md,
+  },
+  lightboxDismissBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#E2E8F0",
   },
   modalOverlay: {
     flex: 1,

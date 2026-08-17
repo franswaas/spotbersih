@@ -57,6 +57,7 @@ export function getLocalReports(): Report[] {
  */
 export async function getReports(userEmail?: string): Promise<Report[]> {
   const serverUrl = getAiServerUrl();
+  const localReports = getLocalReports();
 
   try {
     const res = await axios.get(`${serverUrl}/reports?_t=${Date.now()}`, {
@@ -65,10 +66,23 @@ export async function getReports(userEmail?: string): Promise<Report[]> {
         "Pragma": "no-cache",
         "Expires": "0",
       },
-      timeout: 3500,
+      timeout: 4500,
     });
     if (res.data?.status === "success" && Array.isArray(res.data?.reports)) {
-      const serverReports: Report[] = res.data.reports;
+      let serverReports: Report[] = res.data.reports;
+
+      // Auto-heal: If local device has unsynced offline reports, push them to server
+      const unsynced = localReports.filter(
+        (l) => !serverReports.some((s) => s.id === l.id || s.display_id === l.display_id)
+      );
+      if (unsynced.length > 0) {
+        for (const un of unsynced) {
+          try {
+            await axios.post(`${serverUrl}/reports`, un, { timeout: 8000 });
+            serverReports = [un, ...serverReports];
+          } catch {}
+        }
+      }
 
       // Authoritative update: server list is the single source of truth
       if (Platform.OS === "web" && typeof window !== "undefined" && window.localStorage) {
@@ -80,7 +94,7 @@ export async function getReports(userEmail?: string): Promise<Report[]> {
     // Backend offline or unreachable, fallback to local storage
   }
 
-  return getLocalReports();
+  return localReports;
 }
 
 /**
@@ -90,10 +104,10 @@ export async function saveReport(report: Report): Promise<void> {
   // 1. Immediately save locally for zero-latency UI response
   saveLocalReport(report);
 
-  // 2. Synchronize to shared backend server
+  // 2. Synchronize to shared backend server with generous timeout
   const serverUrl = getAiServerUrl();
   try {
-    await axios.post(`${serverUrl}/reports`, report, { timeout: 4500 });
+    await axios.post(`${serverUrl}/reports`, report, { timeout: 12000 });
   } catch (e) {
     console.warn("Could not sync report to backend server, saved locally:", e);
   }
