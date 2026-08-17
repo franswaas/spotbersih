@@ -102,9 +102,13 @@ export async function deleteReport(reportId: string): Promise<void> {
   // 2. Delete on shared server
   const serverUrl = getAiServerUrl();
   try {
-    await axios.delete(`${serverUrl}/reports/${encodeURIComponent(reportId)}`, { timeout: 4500 });
-  } catch (e) {
-    console.warn("Could not sync report deletion to backend server:", e);
+    await axios.post(`${serverUrl}/reports/delete`, { id: reportId, display_id: reportId }, { timeout: 4500 });
+  } catch {
+    try {
+      await axios.delete(`${serverUrl}/reports/${encodeURIComponent(reportId)}`, { timeout: 4500 });
+    } catch (e) {
+      console.warn("Could not sync report deletion to backend server:", e);
+    }
   }
 }
 

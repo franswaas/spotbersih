@@ -432,14 +432,22 @@ def save_report_endpoint(report: dict = Body(...)):
         "total_count": len(updated)
     }
 
+@app.post("/reports/delete")
 @app.delete("/reports/{report_id}")
-def delete_report_endpoint(report_id: str):
+def delete_report_endpoint(report_id: str = None, payload: dict = Body(None)):
+    target_id = report_id
+    if (not target_id or target_id == "{report_id}") and payload:
+        target_id = payload.get("id") or payload.get("report_id") or payload.get("display_id")
+    target_id_str = str(target_id or "").strip()
     reports = load_shared_reports()
-    filtered = [r for r in reports if r.get("id") != report_id and r.get("display_id") != report_id]
+    filtered = [
+        r for r in reports
+        if str(r.get("id", "")).strip() != target_id_str and str(r.get("display_id", "")).strip() != target_id_str
+    ]
     save_shared_reports(filtered)
     return {
         "status": "success",
-        "deleted_id": report_id,
+        "deleted_id": target_id_str,
         "remaining_count": len(filtered)
     }
 

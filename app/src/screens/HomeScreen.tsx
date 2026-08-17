@@ -258,10 +258,10 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     isMountedRef.current = true;
     void loadReportsData();
 
-    // Periodic 5s synchronization between Laptop, Mobile (HP), and Tablets
+    // Periodic 3s fast synchronization between Laptop, Mobile (HP), and Tablets
     const syncInterval = setInterval(() => {
       void loadReportsData();
-    }, 5000);
+    }, 3000);
 
     // Initial GPS query
     activateGps(false);
@@ -1016,7 +1016,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.paneCardRight}>
           <WasteDistributionMap
             reports={reports}
-            height={260}
+            height={isMobile ? 260 : 420}
             userLocation={gpsLocation}
             onCoordinateSelect={handleManualCoordinateSelect}
             onSelectReport={(selected) => setPreviewReport(selected)}
