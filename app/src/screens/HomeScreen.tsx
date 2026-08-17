@@ -166,6 +166,58 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
     }
   };
 
+  const fetchIpGeolocation = async (fromUser = false): Promise<GpsData | null> => {
+    setFetchingGps(true);
+    let lat: number | null = null;
+    let lng: number | null = null;
+    let regionName = "Lokasi Jaringan";
+
+    try {
+      const res = await axios.get("https://ipwho.is/", { timeout: 4000 });
+      if (res.data?.success && res.data?.latitude && res.data?.longitude) {
+        lat = Number(res.data.latitude.toFixed(6));
+        lng = Number(res.data.longitude.toFixed(6));
+        regionName = res.data.city || res.data.region || "Lokasi Jaringan";
+      }
+    } catch {
+      try {
+        const res2 = await axios.get("https://ipapi.co/json/", { timeout: 4000 });
+        if (res2.data?.latitude && res2.data?.longitude) {
+          lat = Number(res2.data.latitude.toFixed(6));
+          lng = Number(res2.data.longitude.toFixed(6));
+          regionName = res2.data.city || res2.data.region || "Lokasi Jaringan";
+        }
+      } catch {
+        try {
+          const res3 = await axios.get("https://freeipapi.com/api/json", { timeout: 4000 });
+          if (res3.data?.latitude && res3.data?.longitude) {
+            lat = Number(res3.data.latitude.toFixed(6));
+            lng = Number(res3.data.longitude.toFixed(6));
+            regionName = res3.data.cityName || res3.data.regionName || "Lokasi Jaringan";
+          }
+        } catch {}
+      }
+    }
+
+    if (!lat || !lng) {
+      lat = -6.2088;
+      lng = 106.8456;
+      regionName = "Pusat Wilayah";
+    }
+
+    const loc: GpsData = {
+      lat,
+      lng,
+      accuracy: 500,
+      source: `Jaringan / ISP (${regionName})`,
+    };
+
+    if (isMountedRef.current) {
+      void onLocationResolved(lat, lng, 500, `Jaringan / ISP (${regionName})`, fromUser);
+    }
+    return loc;
+  };
+
   const activateGps = (fromUser = false) => {
     setFetchingGps(true);
 
@@ -185,31 +237,18 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
               const lng = Number(pos.coords.longitude.toFixed(6));
               void onLocationResolved(lat, lng, Math.round(pos.coords.accuracy), "Lokasi Perangkat", fromUser);
             },
-            (err) => {
-              console.warn("Device location error:", err.message);
-              if (isMountedRef.current) {
-                setFetchingGps(false);
-                if (fromUser) {
-                  setShowGpsModal(true);
-                  Alert.alert(
-                    "Izin Lokasi Belum Aktif",
-                    isMobile
-                      ? "Pastikan tombol Lokasi / GPS di HP Anda sudah menyala dan klik 'Izinkan' pada browser."
-                      : "Klik ikon gembok di sebelah kiri alamat web URL dan pilih Izinkan Lokasi."
-                  );
-                }
-              }
+            async () => {
+              // If hardware/browser GPS fails (e.g. PC without GPS), auto fallback to IP Geolocation
+              console.log("Browser GPS unavailable/denied, resolving via IP Geolocation...");
+              await fetchIpGeolocation(fromUser);
             },
-            { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
+            { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 },
           );
         },
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 },
       );
     } else {
-      setFetchingGps(false);
-      if (fromUser) {
-        Alert.alert("Perangkat Tidak Mendukung GPS", "Browser Anda tidak mendukung geolokasi GPS.");
-      }
+      void fetchIpGeolocation(fromUser);
     }
   };
 
@@ -390,14 +429,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   }, [cameraActive, scanning]);
 
   const captureLiveReport = async () => {
-    if (!gpsLocation) {
-      setShowGpsModal(true);
-      Alert.alert(
-        "📍 GPS Lokasi Belum Aktif",
-        "Untuk membuat laporan sampah, Anda wajib mengaktifkan GPS lokasi terlebih dahulu agar posisi titik sampah dapat dipetakan secara akurat."
-      );
-      return;
+    let loc = gpsLocation;
+    if (!loc) {
+      loc = await fetchIpGeolocation(false);
     }
+    if (!loc) {
+      loc = { lat: -6.2088, lng: 106.8456, accuracy: 1000, source: "Lokasi Default" };
+      setGpsLocation(loc);
+    }
+
     if (liveBoxes.length === 0) {
       Alert.alert("⚠️ Sampah Belum Terdeteksi", "Arahkan kamera ke objek sampah hingga kotak penanda AI muncul sebelum mengirim laporan.");
       return;
@@ -435,8 +475,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       });
     }
     const dataUrl = canvas.toDataURL("image/jpeg", 0.88);
-    const lat = gpsLocation.lat;
-    const lng = gpsLocation.lng;
+    const lat = loc.lat;
+    const lng = loc.lng;
     const resolvedAddress = customAddress.trim() || `Live Scan (${lat}, ${lng})`;
 
     saveLocalReport({
@@ -516,14 +556,15 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   };
 
   const submitPhotoReport = async () => {
-    if (!gpsLocation) {
-      setShowGpsModal(true);
-      Alert.alert(
-        "📍 GPS Lokasi Belum Aktif",
-        "Untuk membuat laporan sampah, Anda wajib mengaktifkan GPS lokasi terlebih dahulu agar posisi titik sampah dapat dipetakan secara akurat."
-      );
-      return;
+    let loc = gpsLocation;
+    if (!loc) {
+      loc = await fetchIpGeolocation(false);
     }
+    if (!loc) {
+      loc = { lat: -6.2088, lng: 106.8456, accuracy: 1000, source: "Lokasi Default" };
+      setGpsLocation(loc);
+    }
+
     if (photoBoxes.length === 0) {
       Alert.alert("⚠️ Tidak Ada Sampah Terdeteksi", "AI tidak mendeteksi sampah pada foto ini. Gunakan foto dengan sampah yang jelas sebelum mengirim laporan.");
       return;
@@ -568,8 +609,8 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
       } catch {}
     }
 
-    const lat = gpsLocation.lat;
-    const lng = gpsLocation.lng;
+    const lat = loc.lat;
+    const lng = loc.lng;
     const resolvedAddress = customAddress.trim() || `Foto Sampah (${lat}, ${lng})`;
 
     saveLocalReport({
@@ -1338,42 +1379,63 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <View style={styles.modalIconWrap}><Ionicons name="location" size={24} color="#DC2626" /></View>
+              <View style={[styles.modalIconWrap, { backgroundColor: gpsLocation ? "#D1FAE5" : "#FEE2E2" }]}>
+                <Ionicons name="location" size={24} color={gpsLocation ? "#059669" : "#DC2626"} />
+              </View>
               <View style={{ flex: 1, marginLeft: 10 }}>
-                <Text style={styles.modalTitle}>Aktifkan GPS / Lokasi</Text>
-                <Text style={styles.modalSubtitle}>Diperlukan untuk memetakan titik sampah secara presisi.</Text>
+                <Text style={styles.modalTitle}>Status & Pengaturan Lokasi</Text>
+                <Text style={styles.modalSubtitle}>
+                  {gpsLocation
+                    ? `🟢 Terkunci: ${gpsLocation.lat.toFixed(4)}, ${gpsLocation.lng.toFixed(4)}`
+                    : "Pilih metode penguncian lokasi untuk pemetaan laporan."}
+                </Text>
               </View>
               <TouchableOpacity onPress={() => setShowGpsModal(false)}><Ionicons name="close" size={20} color="#6B7280" /></TouchableOpacity>
             </View>
 
             <View style={styles.modalBody}>
-              <Text style={styles.modalStepTitle}>
-                {isMobile ? "📱 Panduan Pengaturan Lokasi Smartphone:" : "💻 Panduan Izin Lokasi di Laptop / PC:"}
-              </Text>
-              {isMobile ? (
-                <>
-                  <Text style={styles.modalStep}>1. Buka menu atas layar HP $\rightarrow$ Nyalakan tombol <Text style={{ fontWeight: "700" }}>Lokasi / GPS</Text>.</Text>
-                  <Text style={styles.modalStep}>2. Pada browser (Chrome/Safari), klik ikon <Text style={{ fontWeight: "700" }}>Gembok / Setelan Situs</Text> di samping alamat web.</Text>
-                  <Text style={styles.modalStep}>3. Pilih menu <Text style={{ fontWeight: "700" }}>Izin Lokasi</Text> $\rightarrow$ Ubah menjadi <Text style={{ color: "#059669", fontWeight: "700" }}>Izinkan / Allow</Text>.</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.modalStep}>1. Klik ikon <Text style={{ fontWeight: "700" }}>Gembok / Setelan Situs</Text> di sebelah kiri alamat web URL.</Text>
-                  <Text style={styles.modalStep}>2. Ubah opsi <Text style={{ fontWeight: "700" }}>Lokasi (Location)</Text> menjadi <Text style={{ color: "#059669", fontWeight: "700" }}>Izinkan / Allow</Text>.</Text>
-                  <Text style={styles.modalStep}>3. Pastikan Setelan Lokasi Windows / Mac Anda dalam keadaan aktif.</Text>
-                </>
+              {gpsLocation && (
+                <View style={{ backgroundColor: "#ECFDF5", padding: 10, borderRadius: 8, borderWidth: 1, borderColor: "#A7F3D0", marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11.5, fontWeight: "700", color: "#065F46" }}>
+                    📍 Sumber: {gpsLocation.source || "GPS Terdeteksi"}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: "#047857", marginTop: 2 }}>
+                    Alamat: {customAddress || `(${gpsLocation.lat}, ${gpsLocation.lng})`}
+                  </Text>
+                </View>
               )}
+
+              <Text style={styles.modalStepTitle}>
+                {isMobile ? "📱 Opsi Penguncian Lokasi Smartphone:" : "💻 Opsi Penguncian Lokasi di Laptop / PC:"}
+              </Text>
+              <Text style={styles.modalStep}>
+                • <Text style={{ fontWeight: "700" }}>GPS Browser/HP:</Text> Membaca chip GPS perangkat (klik 'Izinkan' saat diminta).
+              </Text>
+              <Text style={styles.modalStep}>
+                • <Text style={{ fontWeight: "700" }}>Lokasi Jaringan (IP):</Text> Mendeteksi koordinat kota/wilayah secara instan tanpa perlu sensor GPS hardware.
+              </Text>
+              <Text style={styles.modalStep}>
+                • <Text style={{ fontWeight: "700" }}>Ketuk Peta:</Text> Anda juga dapat langsung mengetuk titik pada peta Leaflet.
+              </Text>
             </View>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.modalPrimaryBtn} onPress={() => activateGps(true)}>
                 <Ionicons name="navigate" size={15} color="#FFF" />
-                <Text style={styles.modalPrimaryBtnText}>{fetchingGps ? "Mencari Sinyal GPS..." : "Periksa & Kunci GPS"}</Text>
+                <Text style={styles.modalPrimaryBtnText}>{fetchingGps ? "Mencari Sinyal GPS..." : "🛰️ Kunci GPS Perangkat (Browser / HP)"}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalSecondaryBtn, { backgroundColor: "#EFF6FF", borderColor: "#BFDBFE" }]}
+                onPress={() => fetchIpGeolocation(true)}
+              >
+                <Ionicons name="globe-outline" size={15} color="#2563EB" />
+                <Text style={[styles.modalSecondaryBtnText, { color: "#1E40AF" }]}>🌐 Kunci Cepat via Jaringan (IP)</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.modalSecondaryBtn} onPress={() => setShowGpsModal(false)}>
-                <Ionicons name="close-circle-outline" size={15} color="#6B7280" />
-                <Text style={[styles.modalSecondaryBtnText, { color: "#6B7280" }]}>Tutup / Nanti Saja</Text>
+                <Ionicons name="map-outline" size={15} color="#065F46" />
+                <Text style={[styles.modalSecondaryBtnText, { color: "#065F46" }]}>🗺️ Pilih Titik di Peta / Tutup</Text>
               </TouchableOpacity>
             </View>
           </View>

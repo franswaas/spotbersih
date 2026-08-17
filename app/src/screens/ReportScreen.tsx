@@ -349,16 +349,30 @@ export default function ReportScreen({ navigation }: ReportScreenProps) {
       return;
     }
 
-    // Strictly require real GPS
-    if (!gpsLocation) {
-      setShowGpsModal(true);
-      return;
+    let loc = gpsLocation;
+    if (!loc) {
+      try {
+        const res = await axios.get("https://ipwho.is/", { timeout: 3000 });
+        if (res.data?.latitude && res.data?.longitude) {
+          loc = {
+            lat: Number(res.data.latitude.toFixed(6)),
+            lng: Number(res.data.longitude.toFixed(6)),
+            accuracy: 500,
+            source: `Jaringan ISP (${res.data.city || 'Wilayah'})`,
+          };
+          setGpsLocation(loc);
+        }
+      } catch {}
+    }
+    if (!loc) {
+      loc = { lat: -6.2088, lng: 106.8456, accuracy: 1000, source: "Lokasi Default" };
+      setGpsLocation(loc);
     }
 
     setLoading(true);
 
-    const lat = gpsLocation.lat;
-    const lng = gpsLocation.lng;
+    const lat = loc.lat;
+    const lng = loc.lng;
     const resolvedAddress = customAddress.trim() || `Lat: ${lat}, Long: ${lng}`;
     const userEmail = email || "tamu.edukasi@wastemanagement.id";
 

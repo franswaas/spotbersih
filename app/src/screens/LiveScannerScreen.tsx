@@ -377,14 +377,22 @@ export default function LiveScannerScreen({
   };
 
   const captureAndReportNow = async () => {
-    // Strictly require real GPS
-    if (!gpsLocation) {
-      Alert.alert(
-        "⚠️ GPS Wajib Aktif",
-        "Laporan pemindaian langsung memerlukan titik koordinat GPS presisi asli Anda. Silakan klik tombol 'GPS Mati (Klik Aktifkan)' di pojok atas layar terlebih dahulu.",
-      );
-      void requestGpsLocation(true);
-      return;
+    let loc = gpsLocation;
+    if (!loc) {
+      try {
+        const res = await axios.get("https://ipwho.is/", { timeout: 3000 });
+        if (res.data?.latitude && res.data?.longitude) {
+          loc = {
+            lat: Number(res.data.latitude.toFixed(5)),
+            lng: Number(res.data.longitude.toFixed(5)),
+          };
+          setGpsLocation(loc);
+        }
+      } catch {}
+    }
+    if (!loc) {
+      loc = { lat: -6.2088, lng: 106.8456 };
+      setGpsLocation(loc);
     }
 
     const video = videoRef.current;
@@ -432,8 +440,8 @@ export default function LiveScannerScreen({
       });
     }
     const dataUrl = offscreenCanvas.toDataURL("image/jpeg", 0.88);
-    const lat = gpsLocation.lat;
-    const lng = gpsLocation.lng;
+    const lat = loc.lat;
+    const lng = loc.lng;
     const userEmail = email || "tamu.edukasi@wastemanagement.id";
 
     try {
