@@ -102,6 +102,7 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
   const [reports, setReports] = useState<Report[]>([]);
   const [gpsLocation, setGpsLocation] = useState<GpsData | null>(null);
   const [fetchingGps, setFetchingGps] = useState(false);
+  const [gpsErrorMsg, setGpsErrorMsg] = useState<string | null>(null);
   const [showGpsModal, setShowGpsModal] = useState(false);
   const [customAddress, setCustomAddress] = useState("");
 
@@ -168,42 +169,64 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
 
   const activateGps = (fromUser = false) => {
     setFetchingGps(true);
+    setGpsErrorMsg(null);
 
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      // Direct Pure Real Device Hardware GPS Query
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = Number(pos.coords.latitude.toFixed(6));
-          const lng = Number(pos.coords.longitude.toFixed(6));
-          const accuracy = Math.round(pos.coords.accuracy);
-          void onLocationResolved(lat, lng, accuracy, "GPS Satelit / Hardware", fromUser);
-        },
-        (err) => {
-          console.warn("Real GPS hardware error:", err.message);
-          if (isMountedRef.current) {
-            setFetchingGps(false);
-            if (fromUser) {
-              setShowGpsModal(true);
-              let errorDetail = "Pastikan GPS di perangkat Anda telah diaktifkan dan browser diberikan izin akses lokasi.";
-              if (err.code === 1) {
-                errorDetail = "Izin lokasi di browser saat ini DIBLOKIR. Klik ikon gembok / setelan situs di samping alamat URL lalu pilih 'Izinkan Lokasi'.";
-              } else if (err.code === 2) {
-                errorDetail = "Sinyal GPS perangkat tidak dapat ditemukan. Coba aktifkan GPS di smartphone atau tandai langsung di peta.";
-              } else if (err.code === 3) {
-                errorDetail = "Waktu pencarian sinyal GPS habis. Pastikan sensor GPS perangkat menyala.";
-              }
-              Alert.alert("Sinyal GPS Belum Terkunci", errorDetail);
-            }
-          }
-        },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
-      );
-    } else {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
       setFetchingGps(false);
+      setGpsErrorMsg("Browser Anda tidak mendukung modul geolokasi.");
       if (fromUser) {
-        Alert.alert("Perangkat Tidak Mendukung GPS", "Browser Anda tidak memiliki modul geolokasi.");
+        Alert.alert("Perangkat Tidak Mendukung", "Browser Anda tidak memiliki modul geolokasi.");
       }
+      return;
     }
+
+    let isDone = false;
+
+    const handleSuccess = (pos: GeolocationPosition, sourceLabel: string) => {
+      if (isDone) return;
+      isDone = true;
+      const lat = Number(pos.coords.latitude.toFixed(6));
+      const lng = Number(pos.coords.longitude.toFixed(6));
+      const accuracy = Math.round(pos.coords.accuracy || 10);
+      setGpsErrorMsg(null);
+      void onLocationResolved(lat, lng, accuracy, sourceLabel, fromUser);
+    };
+
+    // Phase 1: Fast OS / Hardware Device Geolocation (works reliably on Laptop & Mobile)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        handleSuccess(pos, "GPS Asli Perangkat");
+      },
+      (err1) => {
+        console.log("GPS Phase 1 note:", err1.message);
+        // Phase 2: High-accuracy satellite GPS query fallback
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            handleSuccess(pos, "GPS Satelit Presisi");
+          },
+          (err2) => {
+            console.warn("GPS Phase 2 failed:", err2.message);
+            if (isMountedRef.current && !isDone) {
+              setFetchingGps(false);
+              let msg = "Pastikan GPS di HP / Laptop Anda telah aktif dan browser diberikan izin akses.";
+              if (err2.code === 1 || err1.code === 1) {
+                msg = "Izin lokasi browser saat ini DIBLOKIR. Klik ikon gembok di samping alamat web URL lalu pilih 'Izinkan Lokasi'.";
+              } else if (err2.code === 2 || err1.code === 2) {
+                msg = "Sensor lokasi perangkat tidak terbaca. Pastikan GPS di HP menyala atau ketuk langsung titik sampah pada peta.";
+              } else if (err2.code === 3 || err1.code === 3) {
+                msg = "Waktu pencarian sinyal GPS habis. Coba klik tombol Kunci GPS sekali lagi.";
+              }
+              setGpsErrorMsg(msg);
+              if (fromUser) {
+                setShowGpsModal(true);
+              }
+            }
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        );
+      },
+      { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 },
+    );
   };
 
   const handleManualCoordinateSelect = (lat: number, lng: number) => {
@@ -1363,6 +1386,23 @@ export default function HomeScreen({ navigation }: HomeScreenProps) {
                   <Text style={{ fontSize: 11, color: "#047857", marginTop: 2 }}>
                     Alamat: {customAddress || `(${gpsLocation.lat}, ${gpsLocation.lng})`}
                   </Text>
+                </View>
+              )}
+
+              {fetchingGps && (
+                <View style={{ backgroundColor: "#F0FDF4", padding: 10, borderRadius: 8, borderWidth: 1, borderColor: "#BBF7D0", marginBottom: 10, flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <ActivityIndicator size="small" color="#059669" />
+                  <Text style={{ fontSize: 11.5, color: "#166534", fontWeight: "600" }}>Sedang membaca koordinat GPS perangkat Anda...</Text>
+                </View>
+              )}
+
+              {gpsErrorMsg && (
+                <View style={{ backgroundColor: "#FEF2F2", padding: 10, borderRadius: 8, borderWidth: 1, borderColor: "#FECACA", marginBottom: 10 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: "#DC2626" }}>Sinyal GPS Belum Terbaca</Text>
+                  </View>
+                  <Text style={{ fontSize: 11, color: "#991B1B", marginTop: 3, lineHeight: 15 }}>{gpsErrorMsg}</Text>
                 </View>
               )}
 
